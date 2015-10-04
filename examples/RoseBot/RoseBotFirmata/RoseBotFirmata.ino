@@ -892,7 +892,7 @@ void disableI2CPins() {
 void systemResetCallback()
 {
   isResetting = true;
-  
+
   encoderPresent = false;
 
   // initialize a defalt state
@@ -989,7 +989,7 @@ void setup()
   /* calculate number of loops per ping */
   numLoops = INTER_PING_INTERVAL / samplingInterval ;
 
-  Firmata.begin(57600);
+  Firmata.begin(115200);
   systemResetCallback();  // reset to default config
 }
 
