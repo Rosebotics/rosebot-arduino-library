@@ -989,7 +989,7 @@ void setup()
   /* calculate number of loops per ping */
   numLoops = INTER_PING_INTERVAL / samplingInterval ;
 
-  Firmata.begin(115200);
+  Firmata.begin(57600);
   systemResetCallback();  // reset to default config
 }
 
