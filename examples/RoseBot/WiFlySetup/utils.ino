@@ -1,5 +1,5 @@
 /*
- * Connects to the WiFly and enter the command mode.
+ * Connects to the WiFly and puts it into command mode.
  */
 int enterCommandModeWithWiFly() {
   char selection;
@@ -64,9 +64,10 @@ int enterCommandModeWithWiFly() {
   Serial.println(response);
   if (response[0] != 'C' || response[1] != 'M' || response[2] != 'D') {
     Serial.println(F("\nSomething went wrong. :("));
-    Serial.println(F("Turn off your RoseBot, turn it back on, then try again."));
-    Serial.println(F("Or try pulling the WiFly out and putting it back in, then close and reopen the Serial Monitor"));
-    Serial.println(F("Also check the WiFly Baudrate too!"));
+    Serial.println(F("Check the WiFly Baudrate that you used.  Make sure the WiFly switch is using XBEE SW Serial.  Then try again by either:"));
+    Serial.println(F("  Closing and reopening the Serial Monitor (resets just this program)"));
+    Serial.println(F("  Turning off your RoseBot and turning it back on (resets this program and the WiFly)"));
+
     return 1;  // Return an error.
   }
 
@@ -80,7 +81,7 @@ int enterCommandModeWithWiFly() {
       Serial.read();  // Trash an Serial Monitor messages if any are sent during this time.
     }
   }
-  Serial.println(F("You are now in command mode with the WiFly!"));
+  Serial.println(F("You are now in command mode with the WiFly! The green light should be flashing quickly."));
   return 0;  // Return success!
 }
 
@@ -93,6 +94,7 @@ char getMenuSelection(char* parameterString) {
   char selection;
   char stringParameterIndex = 0;
   char stringParameterByte;
+  Serial.println(F("\n----------------------------------------------------------------------"));
   Serial.println(F("Select an option below:"));
   Serial.println(F("   0: Exit this shortcut menu and just let me manually type commands to send to the WiFly."));
   Serial.println(F("   1: scan (this option looks for WiFi networks that are in range)"));
@@ -101,7 +103,7 @@ char getMenuSelection(char* parameterString) {
   Serial.println(F("   3: set wlan ssid <network name> (example 3 myNetworkName)"));
   Serial.println(F("   4: set wlan pass <password> (example 4 ifUneed1)"));
   Serial.println(F("   b: set uart baudrate <baudrate choice of either 1 for 9600, 2 for 57600, 3 for 115200>"));
-  Serial.println(F("   s: show net (see if the WiFly is connected to the WiFi or not)"));
+  Serial.println(F("   n: show net (see if the WiFly is connected to the WiFi or not)"));
   Serial.println(F("   i: get ip a (get the ip address of the WiFly)"));
   Serial.println(F("   h: set opt deviceid <customhostname> (Rose students please don't change this)"));
   Serial.println(F("   a: set wlan join 1 (auto connect on startup. This is the default but good to set once)"));
@@ -114,12 +116,12 @@ char getMenuSelection(char* parameterString) {
   while (!Serial.available()); // Wait for the Serial Monitor response.
 
   selection = Serial.read();
+  delay(10); // 10 ms to allow next message to arrive
 
   // Record the string parameter (if one was sent).
   while(Serial.available()) {
-    stringParameterByte = Serial.read();
+    stringParameterByte = (char)Serial.read();
     if (stringParameterByte == '\r') {
-      parameterString[stringParameterIndex] = '\0'; // null terminate the string
       break;
     } else if (stringParameterByte == ' ' && stringParameterIndex == 0) {
       continue; // There will be a parameter coming.
@@ -132,8 +134,9 @@ char getMenuSelection(char* parameterString) {
       parameterString[stringParameterIndex] = stringParameterByte;
       stringParameterIndex++;
     }
+    delay(10); // 100 ms to allow next message to arrive
   }
-
+  parameterString[stringParameterIndex] = '\0'; // null terminate the string
   return selection;
 }
 
@@ -141,21 +144,111 @@ char getMenuSelection(char* parameterString) {
 /*
  * Get the WiFly response to a command.
  */
-bool getWiFlyResponse(String expectedResponse) {
-  // Hide any extra characters sent from WiFly.
-  unsigned long millisInitialValue = millis();
+bool checkForWiFlyConfirmation(char meunSelection) {
+  char* expectedResponse; // Pointer to one of the arrays below
+  char replyScan[] = "SCAN";
+  char replyAok[] = "AOK";
+  char replyStoringInConfig[] = "Storing in config";
+  char replyExit[] = "EXIT";
+  char expectedResponseIndex = 0;
+  char expectedResponseLength = 0;
+  boolean receivedExpectedResponse = false;
+  String wiflyResponseString = "";
+  wiflyResponseString.reserve(200); // reserve 200 bytes for the wiflyResponseString
+  char responseChar;
+  unsigned long millisInitialValue;
+
+  // Prepare the expected response.  This can appear ANYWHERE in the response.
+  switch (meunSelection) {
+    case '1':
+      expectedResponse = replyScan;
+      expectedResponseLength = sizeof(replyScan) - 1;
+      break;
+    case '2':
+    case '3':
+    case '4':
+    case 'b':
+    case 'h':
+    case 'a':
+    case 'f':
+      expectedResponse = replyAok;
+      expectedResponseLength = sizeof(replyAok) - 1;
+      break;
+    case 'n':
+    case 'i':
+    case 'r':
+      // Not applicable
+      break;
+    case 's':
+      expectedResponse = replyStoringInConfig;
+      expectedResponseLength = sizeof(replyStoringInConfig) - 1;
+      break;
+    case 'x':
+      expectedResponse = replyExit;
+      expectedResponseLength = sizeof(replyExit) - 1;
+      break;
+  }
+
+
+  // Record WiFly response
+  millisInitialValue = millis();
   while (millis() - millisInitialValue < 2000) {
     if (WiflySerial.available()) {
-      // TODO: Only show characters to the users that will be meaningful to them.
-      Serial.write(WiflySerial.read());  // Display any WiFly messages if any are sent during this time.
+      responseChar = (char)WiflySerial.read();
+      if (responseChar >= ' ' && responseChar <= 'z') {
+        // Only store printable ascii values.
+        wiflyResponseString += responseChar;
+        if (responseChar == expectedResponse[expectedResponseIndex]) {
+          expectedResponseIndex++;
+          if (expectedResponseIndex >= expectedResponseLength) {
+            receivedExpectedResponse = true;
+          }
+        } else {
+          expectedResponseIndex = 0;
+        }
+      }
     }
     if (Serial.available()) {
       Serial.read();  // Trash an Serial Monitor messages if any are sent during this time.
     }
   }
 
-  // TODO: Parse the response to look for the expectedResponse.
-  return true;
+  // TODO: Add a note about remembering to save this change.
 
+  if (receivedExpectedResponse) {
+    Serial.print(F("WiFly confirmed your command.  Received: "));
+    Serial.println(expectedResponse);
+  } else {
+    Serial.print(F("WiFly did NOT confirmed your command.  Received: "));
+    Serial.println(wiflyResponseString);
+  }
+  return receivedExpectedResponse;
 }
 
+
+/*
+ * Displays any printable WiFly response characters for a period of time
+ */
+void displayPrintableWiFlyCharacters(unsigned long durationMs) {
+  char responseChar;
+  boolean currentlyHidingVersionChars = false;
+  unsigned long millisInitialValue = millis();
+  while (millis() - millisInitialValue < durationMs) {
+    if (WiflySerial.available()) {
+      char responseChar = (char)WiflySerial.read();
+      if ((responseChar >= ' ' && responseChar <= 'z') || responseChar == '\n' || responseChar == '\r') {
+        if (!currentlyHidingVersionChars && responseChar == '<') {
+          currentlyHidingVersionChars = true;
+        } else if (currentlyHidingVersionChars && responseChar == '>') {
+          currentlyHidingVersionChars = true;
+          millisInitialValue = millis() - durationMs + 100; // Short circuit the end to allow only 1 more char.
+        } else if (!currentlyHidingVersionChars) {
+         Serial.print(responseChar);  // Display WiFly messages
+        }
+      }
+      if (Serial.available()) {
+        Serial.read();  // Trash an Serial Monitor messages if any are sent during this time.
+      }
+    }
+  }
+}

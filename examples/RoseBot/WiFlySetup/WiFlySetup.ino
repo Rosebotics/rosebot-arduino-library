@@ -78,6 +78,9 @@ If you try that trick you can figure out if it worked by opening a command windo
 #define DEFAULT_OTHER_NETWORK_NAME "Casa$de$Fisher"  // This is used if you don't pass a parameter to option 3 (set as needed to reduce typing if you like).
 #define DEFAULT_NETWORK_PASSWORD "Rose-Hulman" // This is used if you don't pass a parameter to option 4 (set as needed to reduce typing if you like).
 
+// Skip enterring command mode and just create a manual serial bridge for me.
+#define USE_ONLY_MANUAL_MODE 0  // Set this value to 1 only if you know exactly what you're doing with WiFly. :)
+#define USE_ONLY_MANUAL_MODE_BAUDRATE 115200 // Just set the baudrate value directly here as you will get no menus with this option
 
 SoftwareSerial WiflySerial(15, 14); // RX, TX
 
@@ -85,9 +88,18 @@ void setup() {
   int potentialErrorEnterringCommandMode = 0;
   Serial.begin(115200);  // Baudrate used in the Serial Monitor window (can be anything)
 
+  // Not recommended unless you know what you are doing.
+  if (USE_ONLY_MANUAL_MODE) {
+    Serial.println("USE_ONLY_MANUAL_MODE is set.");
+    Serial.println(" Tips: Enter WiFly's command mode via $$$ with 'No line ending' then use 'Carriage return' for commands.");
+    WiflySerial.begin(USE_ONLY_MANUAL_MODE_BAUDRATE);
+    runManualMode();  // never to return
+  }
+
+  // Use the helper function to put your WiFly into command mode.
   potentialErrorEnterringCommandMode = enterCommandModeWithWiFly();
   if (potentialErrorEnterringCommandMode) {
-    Serial.println(F("\n\nAbort!"));
+    Serial.println(F("\nAbort!\n"));
     while(1);  // I'm choosing to abort this run by stopping any further execution.  Nothing more will happen.
   }
 }
@@ -108,39 +120,33 @@ void loop() {
   //   s: save
   //   r: reboot
   //   x: exit (this exits the command mode)
-  boolean wiflyResponseWasSuccessful = false;
   char stringParameter[64];
   unsigned long millisInitialValue;
-  String expectedResponse = "";
   char selection = getMenuSelection(stringParameter);
   switch (selection) {
-    case 0:
+    case '0':
+      Serial.println(F("0")); // Display the user's selection
       runManualMode();  // never to return
       break;
     case '1':
-      Serial.println(F("scan")); // Display for user
+      Serial.println(F("1")); // Display the user's selection
+      Serial.println(F("scan")); // Display the command to the user
       Serial.println(F("Scanning..."));
       WiflySerial.print(F("scan\r")); // Send it to WiFly
-      // Give the WiFly a few seconds to respond
       // From datasheet: "The default scan time is 200 ms/channel or about 3 seconds."
-      millisInitialValue = millis();
-      while (millis() - millisInitialValue < 3000) {
-        if (WiflySerial.available()) {
-            Serial.write(WiflySerial.read());  // Display any WiFly messages
-        }
-        if (Serial.available()) {
-          Serial.read();  // Trash an Serial Monitor messages if any are sent during this time.
-        }
-      }
+      displayPrintableWiFlyCharacters(4000);
       break;
     case '2':
+      Serial.println(F("2")); // Display the user's selection
       Serial.print(F("set wlan ssid "));
       Serial.println(HARDCODED_NETWORK_NAME);
       WiflySerial.print(F("set wlan ssid "));
       WiflySerial.print(HARDCODED_NETWORK_NAME);
       WiflySerial.print(F("\r"));
+      checkForWiFlyConfirmation(selection);
       break;
     case '3':
+      Serial.println(F("3")); // Display the user's selection
       Serial.print(F("set wlan ssid "));
       WiflySerial.print(F("set wlan ssid "));
       if (stringParameter[0] == '\0') {
@@ -151,8 +157,10 @@ void loop() {
         WiflySerial.print(stringParameter);
       }
       WiflySerial.print(F("\r"));
+      checkForWiFlyConfirmation(selection);
       break;
     case '4':
+      Serial.println(F("4")); // Display the user's selection
       Serial.print(F("set wlan pass "));
       WiflySerial.print(F("set wlan pass "));
       if (stringParameter[0] == '\0') {
@@ -163,12 +171,14 @@ void loop() {
         WiflySerial.print(stringParameter);
       }
       WiflySerial.print(F("\r"));
+      checkForWiFlyConfirmation(selection);
       break;
     case 'b':
+      Serial.println(F("b")); // Display the user's selection
       Serial.print(F("set uart baudrate "));
       WiflySerial.print(F("set uart baudrate "));
       if (stringParameter[0] == '\0') {
-        stringParameter[0] == DEFAULT_WIFLY_BAUDRATE_CHOICE;
+        stringParameter[0] = DEFAULT_WIFLY_BAUDRATE_CHOICE;
       }
       switch (stringParameter[0]) {
         case '1':
@@ -183,57 +193,72 @@ void loop() {
           Serial.println(F("115200"));
           WiflySerial.print(F("115200\r"));
           break;
+        default:
+          Serial.println(F("Error!  did not receive a baudrate parameter!  Please try again."));
+          break;
       }
+      checkForWiFlyConfirmation(selection);
       break;
     case 'n':
+      Serial.println(F("n")); // Display the user's selection
       Serial.println(F("show net"));
       WiflySerial.print(F("show net\r"));
+      displayPrintableWiFlyCharacters(2000);
       break;
     case 'i':
+      Serial.println(F("i")); // Display the user's selection
       Serial.println(F("get ip a"));
       WiflySerial.print(F("get ip a\r"));
+      displayPrintableWiFlyCharacters(2000);
       break;
     case 'h':
+      Serial.println(F("h")); // Display the user's selection
       Serial.print(F("set opt deviceid "));
       Serial.println(stringParameter);
       WiflySerial.print(F("set opt deviceid "));
       WiflySerial.print(stringParameter);
       WiflySerial.print(F("\r"));
+      checkForWiFlyConfirmation(selection);
       break;
     case 'a':
+      Serial.println(F("a")); // Display the user's selection
       Serial.println(F("set wlan join 1"));
       WiflySerial.print(F("set wlan join 1\r"));
+      checkForWiFlyConfirmation(selection);
       break;
     case 'f':
+      Serial.println(F("f")); // Display the user's selection
       Serial.println(F("factory RESET"));
       WiflySerial.print(F("factory RESET\r"));
+      Serial.println(F("reboot  (note the baudrate is now 9600)"));
+      WiflySerial.print(F("reboot\r"));
       runManualMode();  // never to return
       break;
     case 's':
+      Serial.println(F("s")); // Display the user's selection
       Serial.println(F("save"));
       WiflySerial.print(F("save\r"));
+      checkForWiFlyConfirmation(selection);
       break;
     case 'r':
+      Serial.println(F("r")); // Display the user's selection
       Serial.println(F("reboot"));
       WiflySerial.print(F("reboot\r"));
       runManualMode();  // never to return
       break;
     case 'x':
+      Serial.println(F("x")); // Display the user's selection
       Serial.println(F("exit"));
       WiflySerial.print(F("exit\r"));
       runManualMode();  // never to return
       break;
   }
-  // Give the WiFly an opportunity to respond
-  wiflyResponseWasSuccessful = getWiFlyResponse(expectedResponse);
-  if (!wiflyResponseWasSuccessful) {
-    // TODO: Implement this feature.
-  }
   delay(100); // not required I just like having small delays at the end of the loop function if possible. :)
 }
 
 void runManualMode() {
-  Serial.println(F("You are now in manual mode.  Things you type will be sent to WiFly.  Things from WiFly display to you."));
+  Serial.println(F("You are now directly communicating with the WiFly."));
+  Serial.println(F("Things you type will be sent to WiFly.  Things from WiFly display to you."));
   Serial.println(F("If you ever want to go back to the menu mode, just close and then reopen the Serial Monitor."));
   while(1) {
     if (WiflySerial.available()) {
