@@ -2,9 +2,10 @@
  * Connects to the WiFly and enter the command mode.
  */
 int enterCommandModeWithWiFly() {
+  char selection;
   char response[] = "XXX";
   unsigned long millisInitialValue = 0;
-  
+
   Serial.println(F("Select the WiFly baudrate:"));
   Serial.println(F("  1 - 9600 (the default when you plug in a new WiFly module)"));
   Serial.println(F("  2 - 57600 (the standard Firmata baudrate)"));
@@ -12,8 +13,11 @@ int enterCommandModeWithWiFly() {
   Serial.print(F("Use the Send box above to send 1, 2, or 3: "));
 
   while (!Serial.available()); // Wait for the Serial Monitor response.
-
-  switch (Serial.read()) {
+  selection = Serial.read();
+  if (selection == '\r') {
+    selection = DEFAULT_WIFLY_BAUDRATE_CHOICE;
+  }
+  switch (selection) {
     case '1':
       Serial.println(F("1"));
       WiflySerial.begin(9600);
@@ -86,10 +90,14 @@ int enterCommandModeWithWiFly() {
  * Returns a char for the choice made and populates the parameterString as necessary.
  */
 char getMenuSelection(char* parameterString) {
+  char selection;
+  char stringParameterIndex = 0;
+  char stringParameterByte;
   Serial.println(F("Select an option below:"));
   Serial.println(F("   0: Exit this shortcut menu and just let me manually type commands to send to the WiFly."));
   Serial.println(F("   1: scan (this option looks for WiFi networks that are in range)"));
-  Serial.println(F("   2: set wlan ssid RHIT-OPEN"));
+  Serial.print(F("   2: set wlan ssid "));
+  Serial.println(HARDCODED_NETWORK_NAME);
   Serial.println(F("   3: set wlan ssid <network name> (example 3 myNetworkName)"));
   Serial.println(F("   4: set wlan pass <password> (example 4 ifUneed1)"));
   Serial.println(F("   b: set uart baudrate <baudrate choice of either 1 for 9600, 2 for 57600, 3 for 115200>"));
@@ -105,23 +113,41 @@ char getMenuSelection(char* parameterString) {
 
   while (!Serial.available()); // Wait for the Serial Monitor response.
 
-  // TODO: Handle the parameter when it is sent!!!
-  // TODO: Convert spaces to $ for the ssid parameter
-  // TODO: Convert a 1, 2, 3 into 9600, 57600, 115200
+  selection = Serial.read();
 
-  return Serial.read();
+  // Record the string parameter (if one was sent).
+  while(Serial.available()) {
+    stringParameterByte = Serial.read();
+    if (stringParameterByte == '\r') {
+      parameterString[stringParameterIndex] = '\0'; // null terminate the string
+      break;
+    } else if (stringParameterByte == ' ' && stringParameterIndex == 0) {
+      continue; // There will be a parameter coming.
+    } else {
+      if (stringParameterByte == ' ') {
+        stringParameterByte = '$'; // Replace spaces with $ instead
+        // Commands are case sensitive, and you cannot use spaces in parameters.
+        // Use a $ to indicate a space, e.g., MY NETWORK should be written as MY$NETWORK
+      }
+      parameterString[stringParameterIndex] = stringParameterByte;
+      stringParameterIndex++;
+    }
+  }
+
+  return selection;
 }
 
 
 /*
- * This meant to get the WiFly response to a command.  Every command except for factory RESET and reboot should give a predicable reply.
+ * Get the WiFly response to a command.
  */
 bool getWiFlyResponse(String expectedResponse) {
   // Hide any extra characters sent from WiFly.
   unsigned long millisInitialValue = millis();
   while (millis() - millisInitialValue < 2000) {
     if (WiflySerial.available()) {
-      Serial.write(WiflySerial.read());  // Display an WiFly messages if any are sent during this time.
+      // TODO: Only show characters to the users that will be meaningful to them.
+      Serial.write(WiflySerial.read());  // Display any WiFly messages if any are sent during this time.
     }
     if (Serial.available()) {
       Serial.read();  // Trash an Serial Monitor messages if any are sent during this time.
@@ -130,6 +156,6 @@ bool getWiFlyResponse(String expectedResponse) {
 
   // TODO: Parse the response to look for the expectedResponse.
   return true;
-  
+
 }
 
