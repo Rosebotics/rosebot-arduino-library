@@ -1,23 +1,29 @@
 /*
- * Connects to the WiFly and puts it into command mode.
+ * Connects to the WiFly and puts the WiFly into command mode.
  */
-int enterCommandModeWithWiFly() {
-  char selection;
-  char response[] = "XXX";
+boolean enterCommandModeWithWiFly() {
+  boolean successfullyInCommandMode = false;
+  char baudrateSelection;
+  char cmdReply[] = "CMD";
+  char cmdReplyIndex = 0;
+  char responseChar;
+  String wiflyResponseString = "";
+  wiflyResponseString.reserve(200); // reserve 200 bytes for the wiflyResponseString
   unsigned long millisInitialValue = 0;
 
   Serial.println(F("Select the WiFly baudrate:"));
-  Serial.println(F("  1 - 9600 (the default when you plug in a new WiFly module)"));
-  Serial.println(F("  2 - 57600 (the standard Firmata baudrate)"));
-  Serial.println(F("  3 - 112500 (the baudrate used by the RoseBotFirmata sketch)"));
-  Serial.print(F("Use the Send box above to send 1, 2, or 3: "));
+  Serial.println(F("  1 - 9600 (used once for a new WiFly module)"));
+  Serial.println(F("  2 - 57600 (the standard Firmata baudrate, you want this one)"));
+  Serial.println(F("  3 - 112500 (example of another common baudrate, but we don't use this one)"));
+  Serial.print(F("Use the Send box above to send 1, 2 (the default), or 3: "));
 
   while (!Serial.available()); // Wait for the Serial Monitor response.
-  selection = Serial.read();
-  if (selection == '\r') {
-    selection = DEFAULT_WIFLY_BAUDRATE_CHOICE;
+  baudrateSelection = Serial.read();
+  if (baudrateSelection == '\r') {
+    // No text given in the box.  Only the Carriage Return was received.  Use 57600.
+    baudrateSelection = DEFAULT_WIFLY_BAUDRATE_CHOICE;
   }
-  switch (selection) {
+  switch (baudrateSelection) {
     case '1':
       Serial.println(F("1"));
       WiflySerial.begin(9600);
@@ -32,11 +38,11 @@ int enterCommandModeWithWiFly() {
       break;
     default:
       Serial.println(F("That is not a valid choice. :)"));
-      return 1; // Return an error.
+      return false; // Did not enter command mode.
   }
 
-  // Attempt to enter with a nice normal state, flushing buffers, putting things to a normal starting point.
-  WiflySerial.write("exit\r"); // Puts the WiFly back into normal mode if you are accidentally already in command mode.
+  // Attempt to create a nice normal state, flushing buffers, putting things to a normal starting point.
+  WiflySerial.write("exit\r"); // Puts the WiFly back into the normal mode if you are already in command mode.
   Serial.println(F("Clearing any pending WiFly messages..."));
   millisInitialValue = millis();
   while (millis() - millisInitialValue < 1000) {
@@ -49,31 +55,48 @@ int enterCommandModeWithWiFly() {
   }
 
   // Enter into command mode
-  // You should see a slow (0.5 Hz) flashing green LED on the WiFly.
-  Serial.println(F("Entering WiFly command mode by sending $$$ to the WiFly..."));
-  delay(500);
+  // You should see a slow (0.5 Hz) flashing green LED on the WiFly when not in command mode.
+  // Then you should see a faster (1 Hz) flashing green LED on the WiFly when in command mode.
+  //delay(500);  // Already has a sufficient delay above where no messages are sent.
   WiflySerial.write("$$$"); // Hopefully there is a CMD response
-  delay(1000);
-  if (WiflySerial.available()) {
-    response[0] = WiflySerial.read();
-    response[1] = WiflySerial.read();
-    response[2] = WiflySerial.read();
-  }
-  response[3] = '\0'; // null terminator for the string to print
+  Serial.println(F("Entering WiFly command mode by sending $$$ to the WiFly..."));
+  //delay(1000);  // The loop below has a sufficient delay where no messages are sent.
 
-  Serial.println(response);
-  if (response[0] != 'C' || response[1] != 'M' || response[2] != 'D') {
+  // Listen for a CMD response.
+  millisInitialValue = millis();
+  while (millis() - millisInitialValue < 2000) {
+    if (WiflySerial.available()) {
+      responseChar = (char)WiflySerial.read();
+      wiflyResponseString += responseChar;
+      if (responseChar == cmdReply[cmdReplyIndex]) {
+        cmdReplyIndex++;
+        if (cmdReplyIndex >= sizeof(cmdReply) - 1) {
+          successfullyInCommandMode = true;
+          break;
+        }
+      } else {
+        cmdReplyIndex = 0;
+      }
+    }
+    if (Serial.available()) {
+      Serial.read();  // Trash an Serial Monitor messages if any are sent during this time.
+    }
+  }
+
+  if (!successfullyInCommandMode) {
     Serial.println(F("\nSomething went wrong. :("));
+    Serial.print(F("WiFly response was ["));
+    Serial.print(wiflyResponseString);
+    Serial.println(F("]"));
     Serial.println(F("Check the WiFly Baudrate that you used.  Make sure the WiFly switch is using XBEE SW Serial.  Then try again by either:"));
     Serial.println(F("  Closing and reopening the Serial Monitor (resets just this program)"));
     Serial.println(F("  Turning off your RoseBot and turning it back on (resets this program and the WiFly)"));
-
-    return 1;  // Return an error.
+    return false;  // Did not enter command mode.
   }
 
-  // Hide any extra characters sent from WiFly.
+  // Hide any extra characters sent from WiFly (just in case).
   millisInitialValue = millis();
-  while (millis() - millisInitialValue < 1000) {
+  while (millis() - millisInitialValue < 100) {
     if (WiflySerial.available()) {
       WiflySerial.read();  // Trash an WiFly messages if any are sent during this time.
     }
@@ -82,7 +105,7 @@ int enterCommandModeWithWiFly() {
     }
   }
   Serial.println(F("You are now in command mode with the WiFly! The green light should be flashing quickly."));
-  return 0;  // Return success!
+  return successfullyInCommandMode;  // Return success!
 }
 
 
@@ -202,6 +225,7 @@ bool checkForWiFlyConfirmation(char meunSelection) {
           expectedResponseIndex++;
           if (expectedResponseIndex >= expectedResponseLength) {
             receivedExpectedResponse = true;
+            millisInitialValue = millis() - 1900; // Short circuit the end to allow only a few more chars.
           }
         } else {
           expectedResponseIndex = 0;
