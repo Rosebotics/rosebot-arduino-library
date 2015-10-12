@@ -35,6 +35,7 @@
 #include <NewPing.h>
 #include <Stepper.h>
 #include <EnableInterrupt.h>
+#include <avr/wdt.h>
 
 #define I2C_WRITE                   B00000000
 #define I2C_READ                    B00001000
@@ -163,6 +164,8 @@ Stepper *stepper = NULL;
 
 
 boolean isResetting = false;
+
+boolean hasReset = false;
 
 /* utility functions */
 void wireWrite(byte data)
@@ -951,6 +954,14 @@ void systemResetCallback()
   }
   */
   isResetting = false;
+  if (hasReset == false) {
+     hasReset = true;
+  }
+  else {
+     wdt_enable(WDTO_15MS);
+     while(1)
+        ;
+  }
 }
 
 void setup()

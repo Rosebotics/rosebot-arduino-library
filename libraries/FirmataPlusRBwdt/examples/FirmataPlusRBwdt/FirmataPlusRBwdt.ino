@@ -1,4 +1,8 @@
 /*
+  This is an adaptation of Arduino StandardFirmata.
+
+  It supports the Sparkfun RedBot robot.
+
   Firmata is a generic protocol for communicating with microcontrollers
   from software on a host computer. It is intended to work with
   any host computer software package.
@@ -22,18 +26,16 @@
   See file LICENSE.txt for further informations on licensing terms.
 
   Last updated by Jeff Hoefs: April 11, 2015
-  		  Alan Yorinks July 16, 2015
+        Alan Yorinks August 5, 2015
 */
 
 #include <Servo.h>
 #include <Wire.h>
-#include <FirmataPlus.h>
+#include <FirmataPlusRBwdt.h>
 #include <NewPing.h>
 #include <Stepper.h>
-#include <ooPinChangeInt.h> https://code.google.com/p/arduino-pinchangeint/downloads/detail?name=pinchangeint-v2.19beta.zip
-#include <AdaEncoder.h> https://code.google.com/p/adaencoder/downloads/detail?name=adaencoder-v0.7beta.zip
+#include <EnableInterrupt.h>
 #include <avr/wdt.h>
-
 
 #define I2C_WRITE                   B00000000
 #define I2C_READ                    B00001000
@@ -87,6 +89,8 @@ int pinState[TOTAL_PINS];           // any value that has been written
 unsigned long currentMillis;        // store the current value from millis()
 unsigned long previousMillis;       // for comparison with currentMillis
 unsigned int samplingInterval = 19; // how often to run the main loop (in ms)
+unsigned long previousKeepAliveMillis;
+unsigned int keepAliveInterval = 0;
 
 /* i2c data */
 struct i2c_device_info {
@@ -114,16 +118,33 @@ byte detachedServoCount = 0;
 byte servoCount = 0;
 
 /* Rotary Encoder Support */
-byte  encoderMSB, encoderLSB ;     // sysex data registers
+byte  encoderMSBLeft, encoderLSBLeft,  encoderMSBRight, encoderLSBRight;     // sysex data registers
 uint8_t encoderPin1, encoderPin2 ; // user specified encoder pins
-int encoderPostion = 0;            // current position of encoder
-int8_t clicks = 0 ;                // encoder click counter
+//int encoderPostion = 0;            // current position of encoder
+//int8_t clicks = 0 ;                // encoder click counter
 boolean encoderPresent = false ;   // encoder installed flag
 
-// Ping variables
+volatile uint16_t interruptCountLeft = 0; // The count will go back to 0 after hitting 65535.
+volatile uint16_t interruptCountRight = 0; // The count will go back to 0 after hitting 65535.
 
+
+// encoder reporting variables
+int encoderNumLoops = 5; // number of loops to complete before reporting encoder counts
+int encoderLoopCounter = 0;
+
+// encoder counts detected via interrupt
+void interruptFunctionLeft() {
+  interruptCountLeft++;
+}
+
+void interruptFunctionRight() {
+  interruptCountRight++;
+}
+
+// Ping variables
 int numLoops = 0 ;
 int pingLoopCounter = 0 ;
+
 
 int numActiveSonars = 0 ; // number of sonars attached
 uint8_t sonarPinNumbers[MAX_SONARS] ;
@@ -212,15 +233,15 @@ void detachServo(byte pin)
 void readAndReportData(byte address, int theRegister, byte numBytes, byte stopTX) {
   // allow I2C requests that don't require a register read
   // for example, some devices using an interrupt pin to signify new data available
-  // do not always require the register read so upon interrupt you call Wire.requestFrom() 
+  // do not always require the register read so upon interrupt you call Wire.requestFrom()
 
   if (theRegister != REGISTER_NOT_SPECIFIED) {
     Wire.beginTransmission(address);
-    #if ARDUINO >= 100
+#if ARDUINO >= 100
     Wire.write((byte)theRegister);
-    #else
+#else
     Wire.send((byte)theRegister);
-    #endif
+#endif
     Wire.endTransmission(stopTX); // default = true
     // do not set a value of 0
     if (i2cReadDelayTime > 0) {
@@ -234,22 +255,22 @@ void readAndReportData(byte address, int theRegister, byte numBytes, byte stopTX
   Wire.requestFrom(address, numBytes);  // all bytes are returned in requestFrom
 
   // check to be sure correct number of bytes were returned by slave
-  if(numBytes == Wire.available()) {
+  if (numBytes == Wire.available()) {
     i2cRxData[0] = address;
     i2cRxData[1] = theRegister;
     for (int i = 0; i < numBytes; i++) {
-      #if ARDUINO >= 100
+#if ARDUINO >= 100
       i2cRxData[2 + i] = Wire.read();
-      #else
+#else
       i2cRxData[2 + i] = Wire.receive();
-      #endif
+#endif
     }
   }
   else {
-    if(numBytes > Wire.available()) {
+    if (numBytes > Wire.available()) {
       Firmata.sendString("I2C: Too many bytes received");
     } else {
-      Firmata.sendString("I2C: Too few bytes received"); 
+      Firmata.sendString("I2C: Too few bytes received");
     }
   }
 
@@ -365,16 +386,16 @@ void setPinModeCallback(byte pin, int mode)
         }
       }
       break;
+    /*
+        case ENCODER:
+          // enable the pullups for an encoder pin
+          pinMode(pin, INPUT);
+          digitalWrite(pin, HIGH);
 
-    case ENCODER:
-      // enable the pullups for an encoder pin
-      pinMode(pin, INPUT);
-      digitalWrite(pin, HIGH);
-
-      // used as part of encoder sysex message
-      pinConfig[pin] = ENCODER ;
-      break ;
-
+          // used as part of encoder sysex message
+          pinConfig[pin] = ENCODER ;
+          break ;
+    */
     case I2C:
       if (IS_PIN_I2C(pin)) {
         // mark the pin as i2c
@@ -509,16 +530,16 @@ void sysexCallback(byte command, byte argc, byte *argv)
       else {
         slaveAddress = argv[0];
       }
-      
-    // need to invert the logic here since 0 will be default for client
-    // libraries that have not updated to add support for restart tx
-    if (argv[1] & I2C_END_TX_MASK) {
-      stopTX = I2C_RESTART_TX; // default
-    }
-    else {
 
-      stopTX = I2C_STOP_TX;
-    }
+      // need to invert the logic here since 0 will be default for client
+      // libraries that have not updated to add support for restart tx
+      if (argv[1] & I2C_END_TX_MASK) {
+        stopTX = I2C_RESTART_TX; // default
+      }
+      else {
+
+        stopTX = I2C_STOP_TX;
+      }
 
 
       switch (mode) {
@@ -626,6 +647,11 @@ void sysexCallback(byte command, byte argc, byte *argv)
         }
       }
       break;
+    case KEEP_ALIVE:
+      keepAliveInterval = argv[0] + (argv[1] << 7);
+      previousKeepAliveMillis = millis();
+      printData("keepAlive", previousKeepAliveMillis);
+      break;      
     case SAMPLING_INTERVAL:
       if (argc > 1) {
         samplingInterval = argv[0] + (argv[1] << 7);
@@ -701,16 +727,27 @@ void sysexCallback(byte command, byte argc, byte *argv)
       }
       Firmata.write(END_SYSEX);
       break;
-  case ENCODER_CONFIG:
-    // instantiate an encoder object with user's
-    // requested pin designators
-    encoderPin1 = argv[0] ;
-    encoderPin2 = argv[1] ;
-    static AdaEncoder encoder = 
-      AdaEncoder('a', encoderPin1, encoderPin2) ;
-    //thisEncoder = &encoder ;
-    encoderPresent = true ;
-    break ; 
+    case ENCODER_CONFIG:
+      // instantiate an encoder object with user's
+      // requested pin designators
+
+      encoderPin1 = argv[0] ;
+      encoderPin2 = argv[1] ;
+
+      pinMode(encoderPin1, INPUT);
+      digitalWrite(encoderPin1, HIGH);
+
+      pinMode(encoderPin2, INPUT);
+      digitalWrite(encoderPin2, HIGH);
+      // used as part of encoder sysex message
+
+      pinConfig[encoderPin1] = ENCODER ;
+      pinConfig[encoderPin2] = ENCODER ;
+
+      encoderPresent = true ;
+      enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
+      enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
+      break ;
 
 
     case TONE_DATA:
@@ -731,11 +768,11 @@ void sysexCallback(byte command, byte argc, byte *argv)
       }
       break ;
 
-      // arg0 = trigger pin
-      // arg1 = echo pin
-      // arg2 = ping interval in milliseconds if 0, then set to 33
-      // arg3 = maxdistance lsb
-      // arg4 = maxdistance msb
+    // arg0 = trigger pin
+    // arg1 = echo pin
+    // arg2 = ping interval in milliseconds if 0, then set to 33
+    // arg3 = maxdistance lsb
+    // arg4 = maxdistance msb
     case SONAR_CONFIG :
       int max_distance ;
       if ( numActiveSonars < MAX_SONARS)
@@ -863,6 +900,7 @@ void systemResetCallback()
 {
   isResetting = true;
   
+  encoderPresent = false;
 
   // initialize a defalt state
   // TODO: option to load config from EEPROM instead of default
@@ -1027,34 +1065,44 @@ void loop()
       }
     }
     // if encoder was installed, return its data
+
     if ( encoderPresent == true)
     {
-      // read encoder data and return it
-      encoderMSB = 0 ;
-      encoderLSB = 0 ;
-      clicks = 0 ;
+      if ( encoderLoopCounter++ > encoderNumLoops)
+      {
+        encoderLoopCounter = 0;
+        disableInterrupt(encoderPin1);
+        disableInterrupt(encoderPin2);
 
-      AdaEncoder *encoder = NULL;
-      encoder = AdaEncoder::genie() ;
-      if ( encoder != NULL) {
-        clicks = encoder->query() ;
-        if (clicks > 0) {
-          encoderPostion += clicks ;
-        }
-        if (clicks < 0) {
-          encoderPostion += clicks ;
-        }
+
+        encoderLSBLeft = interruptCountLeft & 0x7f ;
+        encoderMSBLeft = (interruptCountLeft >> 7) & 0x7f ;
+        encoderLSBRight = interruptCountRight & 0x7f ;
+        encoderMSBRight = (interruptCountRight >> 7) & 0x7f ;
+
+        Firmata.write(START_SYSEX);
+        Firmata.write(ENCODER_DATA) ;
+        Firmata.write(encoderPin1) ;
+        Firmata.write(encoderLSBLeft) ;
+        Firmata.write(encoderMSBLeft) ;
+        Firmata.write(encoderPin2) ;
+        Firmata.write(encoderLSBRight) ;
+        Firmata.write(encoderMSBRight) ;
+        Firmata.write(END_SYSEX);
+
+        interruptCountLeft = 0;
+        interruptCountRight = 0;
+
+        enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
+        enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
       }
-
-      encoderLSB = encoderPostion & 0x7f ;
-      encoderMSB = (encoderPostion >> 7) & 0x7f ;
-
-      Firmata.write(START_SYSEX);
-      Firmata.write(ENCODER_DATA) ;
-      Firmata.write(encoderPin1) ;
-      Firmata.write(encoderLSB) ;
-      Firmata.write(encoderMSB) ;
-      Firmata.write(END_SYSEX);
+    }
+  }
+  if( keepAliveInterval ) {
+    currentMillis = millis();
+    if (currentMillis - previousKeepAliveMillis > keepAliveInterval*1000) {
+      printData("timeDiff", currentMillis - previousKeepAliveMillis);
+      systemResetCallback();
     }
   }
 }
