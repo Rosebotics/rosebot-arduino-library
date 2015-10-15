@@ -48,8 +48,9 @@
 #define ENCODER_CONFIG          0x60
 #define ENCODER_DATA            0x61 // reply with encoders current positions
 #define SONAR_CONFIG            0x62 // configure a sonar distance sensor for operation
-#define SONAR_DATA              0x63 // Data returned from sonar distance sensor
-#define PIXY_DATA				0x64 // control a Pixy camera
+#define SONAR_DATA              0x63 // data returned from sonar distance sensor
+#define PIXY_CONFIG				0x64 // control and configure a Pixy camera
+#define PIXY_DATA				0x64 // block data returned from Pixy camera
 
 #define SERVO_CONFIG            0x70 // set max angle, minPulse, maxPulse, freq
 #define STRING_DATA             0x71 // a string message with 14-bits per char
