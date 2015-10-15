@@ -17,6 +17,7 @@
   Copyright (C) 2009 Shigeru Kobayashi.  All rights reserved.
   Copyright (C) 2009-2015 Jeff Hoefs.  All rights reserved.
   Copyright (C) 2013-2015 Alan Yorinks. All rights reserved.
+  Modified for RoseBot 2015 David Fisher
 
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -27,6 +28,7 @@
 
   Last updated by Jeff Hoefs: April 11, 2015
         Alan Yorinks August 5, 2015
+        David Fisher Oct 2, 2015
 */
 
 #include <Servo.h>
@@ -54,9 +56,6 @@
 #define MINIMUM_SAMPLING_INTERVAL 10
 
 #define REGISTER_NOT_SPECIFIED -1
-
-#define ENCODER_NOT_PRESENT 0
-#define ENCODER_IS_PRESENT  1
 
 #define INTER_PING_INTERVAL 40 // 40 ms.
 
@@ -88,7 +87,7 @@ int pinState[TOTAL_PINS];           // any value that has been written
 /* timer variables */
 unsigned long currentMillis;        // store the current value from millis()
 unsigned long previousMillis;       // for comparison with currentMillis
-unsigned int samplingInterval = 19; // how often to run the main loop (in ms)
+unsigned int samplingInterval = 25; // how often to run the main loop (in ms)
 unsigned long previousKeepAliveMillis;
 unsigned int keepAliveInterval = 0;
 
@@ -120,17 +119,10 @@ byte servoCount = 0;
 /* Rotary Encoder Support */
 byte  encoderMSBLeft, encoderLSBLeft,  encoderMSBRight, encoderLSBRight;     // sysex data registers
 uint8_t encoderPin1, encoderPin2 ; // user specified encoder pins
-//int encoderPostion = 0;            // current position of encoder
-//int8_t clicks = 0 ;                // encoder click counter
-boolean encoderPresent = false ;   // encoder installed flag
+boolean encoderIsReporting = false;   // flag indicating if the encoders are counting and reporting.
 
 volatile uint16_t interruptCountLeft = 0; // The count will go back to 0 after hitting 65535.
 volatile uint16_t interruptCountRight = 0; // The count will go back to 0 after hitting 65535.
-
-
-// encoder reporting variables
-int encoderNumLoops = 5; // number of loops to complete before reporting encoder counts
-int encoderLoopCounter = 0;
 
 // encoder counts detected via interrupt
 void interruptFunctionLeft() {
@@ -140,6 +132,9 @@ void interruptFunctionLeft() {
 void interruptFunctionRight() {
   interruptCountRight++;
 }
+
+/* Pixy Support */
+boolean pixyIsReporting = false;
 
 // Ping variables
 int numLoops = 0 ;
@@ -743,11 +738,13 @@ void sysexCallback(byte command, byte argc, byte *argv)
       pinConfig[encoderPin1] = ENCODER ;
       pinConfig[encoderPin2] = ENCODER ;
 
-      encoderPresent = true ;
+      encoderIsReporting = true ;
       enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
       enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
       break ;
-
+//    case PIXY_CONFIG:
+//      TODO: Implement
+//      break;
 
     case TONE_DATA:
       byte toneCommand, pin;
@@ -898,8 +895,8 @@ void disableI2CPins() {
 void systemResetCallback()
 {
   isResetting = true;
-  
-  encoderPresent = false;
+  encoderIsReporting = false;
+  pixyIsReporting = false;
 
   // initialize a defalt state
   // TODO: option to load config from EEPROM instead of default
@@ -1063,39 +1060,31 @@ void loop()
         readAndReportData(query[i].addr, query[i].reg, query[i].bytes, query[i].stopTX);
       }
     }
-    // if encoder was installed, return its data
-
-    if ( encoderPresent == true)
-    {
-      if ( encoderLoopCounter++ > encoderNumLoops)
-      {
-        encoderLoopCounter = 0;
-        disableInterrupt(encoderPin1);
-        disableInterrupt(encoderPin2);
-
-
-        encoderLSBLeft = interruptCountLeft & 0x7f ;
-        encoderMSBLeft = (interruptCountLeft >> 7) & 0x7f ;
-        encoderLSBRight = interruptCountRight & 0x7f ;
-        encoderMSBRight = (interruptCountRight >> 7) & 0x7f ;
-
-        Firmata.write(START_SYSEX);
-        Firmata.write(ENCODER_DATA) ;
-        Firmata.write(encoderPin1) ;
-        Firmata.write(encoderLSBLeft) ;
-        Firmata.write(encoderMSBLeft) ;
-        Firmata.write(encoderPin2) ;
-        Firmata.write(encoderLSBRight) ;
-        Firmata.write(encoderMSBRight) ;
-        Firmata.write(END_SYSEX);
-
-        interruptCountLeft = 0;
-        interruptCountRight = 0;
-
-        enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
-        enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
-      }
+    // if encoder has been configured to report then, return encoder data
+    if (encoderIsReporting) {
+      disableInterrupt(encoderPin1);
+      disableInterrupt(encoderPin2);
+      encoderLSBLeft = interruptCountLeft & 0x7f ;
+      encoderMSBLeft = (interruptCountLeft >> 7) & 0x7f ;
+      encoderLSBRight = interruptCountRight & 0x7f ;
+      encoderMSBRight = (interruptCountRight >> 7) & 0x7f ;
+      Firmata.write(START_SYSEX);
+      Firmata.write(ENCODER_DATA) ;
+      Firmata.write(encoderPin1) ;
+      Firmata.write(encoderLSBLeft) ;
+      Firmata.write(encoderMSBLeft) ;
+      Firmata.write(encoderPin2) ;
+      Firmata.write(encoderLSBRight) ;
+      Firmata.write(encoderMSBRight) ;
+      Firmata.write(END_SYSEX);
+      interruptCountLeft = 0;
+      interruptCountRight = 0;
+      enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
+      enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
     }
+    if (pixyIsReporting) {
+      // TODO: Implement.
+	}
   }
   if( keepAliveInterval ) {
     currentMillis = millis();
