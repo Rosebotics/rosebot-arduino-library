@@ -90,7 +90,7 @@
 #define ENCODER                 0x09 // pin configured for rotary encoders
 #define TONE                    0x0a // Any pin in TONE mode
 #define SONAR                   0x0b // Any pin in Ping mode
-#define PIXY                    0x0b // Any pin used by Pixy camera
+#define PIXY                    0x0c // Any pin used by Pixy camera
 #define IGNORE                  0x7F // pin configured to be ignored by digitalWrite and capabilityResponse
 #define TOTAL_PIN_MODES         13
 
