@@ -32,6 +32,8 @@
 #include <Stepper.h>
 #include <ooPinChangeInt.h> https://code.google.com/p/arduino-pinchangeint/downloads/detail?name=pinchangeint-v2.19beta.zip
 #include <AdaEncoder.h> https://code.google.com/p/adaencoder/downloads/detail?name=adaencoder-v0.7beta.zip
+#include <avr/wdt.h>
+
 
 #define I2C_WRITE                   B00000000
 #define I2C_READ                    B00001000
@@ -85,6 +87,8 @@ int pinState[TOTAL_PINS];           // any value that has been written
 unsigned long currentMillis;        // store the current value from millis()
 unsigned long previousMillis;       // for comparison with currentMillis
 unsigned int samplingInterval = 19; // how often to run the main loop (in ms)
+unsigned long previousKeepAliveMillis;
+unsigned int keepAliveInterval = 0;
 
 /* i2c data */
 struct i2c_device_info {
@@ -143,6 +147,8 @@ Stepper *stepper = NULL;
 
 
 boolean isResetting = false;
+
+boolean hasReset = false;
 
 /* utility functions */
 void wireWrite(byte data)
@@ -622,6 +628,10 @@ void sysexCallback(byte command, byte argc, byte *argv)
         }
       }
       break;
+    case KEEP_ALIVE:
+      keepAliveInterval = argv[0] + (argv[1] << 7);
+      previousKeepAliveMillis = millis();
+      break;      
     case SAMPLING_INTERVAL:
       if (argc > 1) {
         samplingInterval = argv[0] + (argv[1] << 7);
@@ -918,6 +928,14 @@ void systemResetCallback()
   }
   */
   isResetting = false;
+  if (hasReset == false) {
+     hasReset = true;
+  }
+  else {
+     wdt_enable(WDTO_15MS);
+     while(1)
+        ;
+  }
 }
 
 void setup()
@@ -1042,6 +1060,12 @@ void loop()
       Firmata.write(encoderLSB) ;
       Firmata.write(encoderMSB) ;
       Firmata.write(END_SYSEX);
+    }
+    if( keepAliveInterval ) {
+       currentMillis = millis();
+       if (currentMillis - previousKeepAliveMillis > keepAliveInterval*1000) {
+         systemResetCallback();
+      }
     }
   }
 }

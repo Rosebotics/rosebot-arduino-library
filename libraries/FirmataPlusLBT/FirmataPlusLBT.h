@@ -42,6 +42,7 @@
 
 // extended command set using sysex (0-127/0x00-0x7F)
 /* 0x00-0x0F reserved for user-defined commands */
+#define KEEP_ALIVE              0x50
 #define TONE_DATA               0x5F // request a tone be played
 #define ENCODER_CONFIG          0x60
 #define ENCODER_DATA            0x61 // reply with encoders current positions

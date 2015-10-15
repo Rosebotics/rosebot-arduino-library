@@ -89,6 +89,8 @@ int pinState[TOTAL_PINS];           // any value that has been written
 unsigned long currentMillis;        // store the current value from millis()
 unsigned long previousMillis;       // for comparison with currentMillis
 unsigned int samplingInterval = 19; // how often to run the main loop (in ms)
+unsigned long previousKeepAliveMillis;
+unsigned int keepAliveInterval = 0;
 
 /* i2c data */
 struct i2c_device_info {
@@ -645,6 +647,10 @@ void sysexCallback(byte command, byte argc, byte *argv)
         }
       }
       break;
+    case KEEP_ALIVE:
+      keepAliveInterval = argv[0] + (argv[1] << 7);
+      previousKeepAliveMillis = millis();
+      break;      
     case SAMPLING_INTERVAL:
       if (argc > 1) {
         samplingInterval = argv[0] + (argv[1] << 7);
@@ -1089,6 +1095,12 @@ void loop()
         enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
         enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
       }
+    }
+  }
+  if( keepAliveInterval ) {
+    currentMillis = millis();
+    if (currentMillis - previousKeepAliveMillis > keepAliveInterval*1000) {
+      systemResetCallback();
     }
   }
 }

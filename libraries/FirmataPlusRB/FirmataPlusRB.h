@@ -27,6 +27,7 @@
 #define MAX_DATA_BYTES          64 // max number of data bytes in incoming messages
 
 // message command bytes (128-255/0x80-0xFF)
+
 #define DIGITAL_MESSAGE         0x90 // send data for a digital pin
 #define ANALOG_MESSAGE          0xE0 // send data for an analog pin (or PWM)
 #define REPORT_ANALOG           0xC0 // enable analog input by pin #
@@ -42,6 +43,7 @@
 
 // extended command set using sysex (0-127/0x00-0x7F)
 /* 0x00-0x0F reserved for user-defined commands */
+#define KEEP_ALIVE              0x50
 #define TONE_DATA               0x5F // request a tone be played
 #define ENCODER_CONFIG          0x60
 #define ENCODER_DATA            0x61 // reply with encoders current positions
