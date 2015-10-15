@@ -49,7 +49,7 @@
 #define ENCODER_DATA            0x61 // reply with encoders current positions
 #define SONAR_CONFIG            0x62 // configure a sonar distance sensor for operation
 #define SONAR_DATA              0x63 // Data returned from sonar distance sensor
-
+#define PIXY_DATA				0x64 // control a Pixy camera
 
 #define SERVO_CONFIG            0x70 // set max angle, minPulse, maxPulse, freq
 #define STRING_DATA             0x71 // a string message with 14-bits per char
@@ -90,6 +90,7 @@
 #define ENCODER                 0x09 // pin configured for rotary encoders
 #define TONE                    0x0a // Any pin in TONE mode
 #define SONAR                   0x0b // Any pin in Ping mode
+#define PIXY                    0x0b // Any pin used by Pixy camera
 #define IGNORE                  0x7F // pin configured to be ignored by digitalWrite and capabilityResponse
 #define TOTAL_PIN_MODES         13
 

@@ -67,6 +67,10 @@
 #define STEPPER_STEP 1
 #define STEPPER_LIBRARY_VERSION 2
 
+#define PIXY_CONFIGURE 0
+#define PIXY_SET_SERVOS 1
+#define PIXY_SET_BRIGHTNESS 2
+#define PIXY_SET_LED 3
 
 /*==============================================================================
  * GLOBAL VARIABLES
