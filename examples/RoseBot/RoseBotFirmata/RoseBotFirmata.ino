@@ -67,10 +67,9 @@
 #define STEPPER_STEP 1
 #define STEPPER_LIBRARY_VERSION 2
 
-#define PIXY_CONFIGURE 0
-#define PIXY_SET_SERVOS 1
-#define PIXY_SET_BRIGHTNESS 2
-#define PIXY_SET_LED 3
+#define PIXY_SET_SERVOS 0
+#define PIXY_SET_BRIGHTNESS 1
+#define PIXY_SET_LED 2
 
 /*==============================================================================
  * GLOBAL VARIABLES
@@ -649,7 +648,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
     case KEEP_ALIVE:
       keepAliveInterval = argv[0] + (argv[1] << 7);
       previousKeepAliveMillis = millis();
-      break;      
+      break;
     case SAMPLING_INTERVAL:
       if (argc > 1) {
         samplingInterval = argv[0] + (argv[1] << 7);
@@ -1088,7 +1087,7 @@ void loop()
     }
     if (pixyIsReporting) {
       // TODO: Implement.
-	}
+  }
   }
   if( keepAliveInterval ) {
     currentMillis = millis();
