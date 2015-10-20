@@ -37,6 +37,8 @@
 #include <NewPing.h>
 #include <Stepper.h>
 #include <EnableInterrupt.h>
+#include <SPI.h>  
+#include <Pixy.h>
 #include <avr/wdt.h>
 
 #define I2C_WRITE                   B00000000
@@ -137,7 +139,9 @@ void interruptFunctionRight() {
 }
 
 /* Pixy Support */
-boolean pixyIsReporting = false;
+Pixy pixy;
+boolean pixyIsReporting = false;  // Determines if Pixy data will be sent.
+byte maxPixyBlocks = 5;  // Sets the maximum number of Pixy blocks to report.
 
 // Ping variables
 int numLoops = 0 ;
@@ -745,10 +749,26 @@ void sysexCallback(byte command, byte argc, byte *argv)
       enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
       enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
       break ;
-//    case PIXY_CONFIG:
-//      TODO: Implement
-//      break;
-
+    case PIXY_INIT:
+      pixy.init()
+      pixyIsReporting = true;
+      maxPixyBlocks = argv[0]; 
+      break;
+    case PIXY_SET_COMMAND:
+      if (argv[0] == PIXY_SET_SERVOS) {
+        int s0 = argv[1] + (argv[2] << 7);
+        int s1 = argv[3] + (argv[4] << 7);
+        pixy.setServos(s0, s1);
+      } else if (argv[0] == PIXY_SET_BRIGHTNESS) {
+        int brightness = argv[1] + (argv[2] << 7);
+        pixy.setBrightness(brightness);
+      } else if (argv[0] == PIXY_SET_LED) {
+        int r = argv[1] + (argv[2] << 7);
+        int g = argv[3] + (argv[4] << 7);
+        int b = argv[5] + (argv[6] << 7);
+        pixy.setLED(r, g, b);
+      }
+      break;
     case TONE_DATA:
       byte toneCommand, pin;
       int frequency, duration;
@@ -1006,6 +1026,7 @@ void loop()
 {
   byte pin, analogPin;
   int pingResult = 0;
+  byte numPixyBlocks, pixyBlockIndex;
 
   /* DIGITALREAD - as fast as possible, check for changes and output them to the
    * FTDI buffer using Serial.print()  */
@@ -1072,13 +1093,13 @@ void loop()
       encoderLSBRight = interruptCountRight & 0x7f ;
       encoderMSBRight = (interruptCountRight >> 7) & 0x7f ;
       Firmata.write(START_SYSEX);
-      Firmata.write(ENCODER_DATA) ;
-      Firmata.write(encoderPin1) ;
-      Firmata.write(encoderLSBLeft) ;
-      Firmata.write(encoderMSBLeft) ;
-      Firmata.write(encoderPin2) ;
-      Firmata.write(encoderLSBRight) ;
-      Firmata.write(encoderMSBRight) ;
+      Firmata.write(ENCODER_DATA);
+      Firmata.write(encoderPin1);
+      Firmata.write(encoderLSBLeft);
+      Firmata.write(encoderMSBLeft);
+      Firmata.write(encoderPin2);
+      Firmata.write(encoderLSBRight);
+      Firmata.write(encoderMSBRight);
       Firmata.write(END_SYSEX);
       interruptCountLeft = 0;
       interruptCountRight = 0;
@@ -1086,8 +1107,18 @@ void loop()
       enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
     }
     if (pixyIsReporting) {
-      // TODO: Implement.
-  }
+      numPixyBlocks = pixy.getBlocks();
+      Firmata.write(START_SYSEX);
+      Firmata.write(PIXY_DATA);
+      Firmata.write(numPixyBlocks);
+      if (maxPixyBlocks != 0 && numPixyBlocks > maxPixyBlocks) {
+        numPixyBlocks = maxPixyBlocks;
+      }
+      for (pixyBlockIndex = 0; pixyBlockIndex < numPixyBlocks; pixyBlockIndex++) {
+        writePixyBlock(pixyBlockIndex);
+      }
+      Firmata.write(END_SYSEX);
+    }
   }
   if( keepAliveInterval ) {
     currentMillis = millis();
@@ -1097,6 +1128,28 @@ void loop()
   }
 }
 
+
+void writePixyBlock(byte pixyBlockIndex) {
+//pixy.blocks[i].signature The signature number of the detected object (1-7 for normal signatures)
+//pixy.blocks[i].x The x location of the center of the detected object (0 to 319)
+//pixy.blocks[i].y The y location of the center of the detected object (0 to 199)
+//pixy.blocks[i].width The width of the detected object (1 to 320)
+//pixy.blocks[i].height The height of the detected object (1 to 200)
+//pixy.blocks[i].angle The angle of the object detected object if the detected object is a color code.
+//pixy.blocks[i].print() A member function that prints the detected object information to the serial port
+  Firmata.write(pixy.blocks[pixyBlockIndex].signature & 0x7f);
+  Firmata.write((pixy.blocks[pixyBlockIndex].signature >> 7) & 0x7f);
+  Firmata.write(pixy.blocks[pixyBlockIndex].x & 0x7f);
+  Firmata.write((pixy.blocks[pixyBlockIndex].x >> 7) & 0x7f);
+  Firmata.write(pixy.blocks[pixyBlockIndex].y & 0x7f);
+  Firmata.write((pixy.blocks[pixyBlockIndex].y >> 7) & 0x7f);
+  Firmata.write(pixy.blocks[pixyBlockIndex].width & 0x7f);
+  Firmata.write((pixy.blocks[pixyBlockIndex].width >> 7) & 0x7f);
+  Firmata.write(pixy.blocks[pixyBlockIndex].height & 0x7f);
+  Firmata.write((pixy.blocks[pixyBlockIndex].height >> 7) & 0x7f);
+  Firmata.write(pixy.blocks[pixyBlockIndex].angle & 0x7f);
+  Firmata.write((pixy.blocks[pixyBlockIndex].angle >> 7) & 0x7f);
+}
 
 
 void printData(char * id,  long data)
@@ -1108,6 +1161,5 @@ void printData(char * id,  long data)
   Firmata.sendString(id) ;
   Firmata.sendString(myArray);
 }
-
 
 
