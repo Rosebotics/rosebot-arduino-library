@@ -1,76 +1,80 @@
-/*
-The purpose of this sketch is to help you connect your WiFly module to your WiFi network from your Sparkfun Redbot board.
-You will use the RoseBotFirmata for all Python/Scratch programs and you will use this sketch ONLY to get your WiFly setup.
-This sketch is nice because you don't need any other hardware beyong a WiFly and a RedBot (RoseBot).
-
-In order to use this sketch you need to:
-  - Turn power off on the RedBot and unplug the batteries
-  - Plug a WiFly module into your RedBot (RoseBot) and flip the switch at the top center of the board to "XBEE SW SERIAL"
-  - Plug in the USB cable to RedBot and your computer, then turn on the RedBot Power switch
-  - Make sure you have selected Tools->Board Arduino Uno and you have the Tools->Port set, then upload this sketch to your RedBot
-  - Open the Serial Monitor (icon in top right that looks like a magnifying glass)
-  - Set the Serial Monitor to "Carriage Return" and "115200 baud" (keep Autoscroll checked)
-    - Note, the speed used for the Serial Monitor is not necessarially (and probably isn't) the same speed that WiFly uses (totally ok)
-  * Follow the prompts to setup your WiFly (make sure to always finish a recipe with a save then a reboot, s then r)
-    - Depending on your setup, you should probably write down the WiFly's ip address when you do the reboot too!
-  - After your WiFly is setup, open and upload the Examples -> RoseBot -> RoseBotFirmata sketch onto RedBot board
-  - Power down, remove the USB cable, flip the switch back to "XBEE HW SERIAL", plug in the batteries, then turn power on.
-  - You should be able to run Python and Scratch programs to drive the RoseBot again
-
-There are many things you can do with this sketch, but here are the common recipes that I predict you'll need.
-
-#1.  Set the baudrate to 57600 for a new WiFly
-When you buy a new WiFly module and plug it in for the very first time the baudrate is 9600.  You need to fix that.
-The first time you ever connect you will need to connect to WiFly using the 9600 baudrate and send some commands.  Run the steps
-shown above and for the * step, you'll be running these commands:
-  set uart baudrate 57600
-  save
-  reboot
-You'll do that using the menu shortcuts:
-(select option 1 to connect at 9600, then send each command below, one at a time)
-  b 2
-  s
-  r
-You will only need to do this once ever.  After your WiFly reboots it will be at a different baudrate.  Also after a reboot
-your WiFly will no longer be in command mode.  So after this r command, you need to close the Serial Monitor then reopen it.
-Next time you are asked to connect use the 57600 option.
-
-
-#2.  Get the WiFly onto your WiFi network.
-Connect at whatever baudrate your WiFly is using from the recipe above (probably 57600 which is choice 2).  Then you'll use
-these commands:
-  set wlan join 1
-  scan
-  set wlan ssid YOUR$WIFI$NAME$NO$SPACES
-  set wlan pass ifUneed1
-  save
-  reboot
-You'll do that using the menu shortcuts:
-  a
-  1
-  3 YOUR WIFI NAME NO SPACES
-  4 ifUneed1
-  s
-  r
-Note, this sketch will convert spaces for parameters in $ for you.  The WiFly doesn't like spaces so you use $ instead, but that
-is all handled internally by this sketch.  The reboot should show you the IP Address of your WiFly on the network.  Write that down.
-
-
-#3. Getting the IP Address of your WiFly if you forgot it.
-If you forgot to write down your IP address or if it magically changed on you from a DHCP lease renewal you need to do this:
-  get ip a
-  exit
-You'll do that using the menu shortcuts:
-  i
-  x
-Write it down.  BTW you can try to avoid IP Addresses by setting the WiFly hostname, for example
-  h r05
-To name your WiFly, then maybe your WiFi network will use the hostname to give you a NAMED address.  If you try that trick you can
-figure out if it worked by opening a command window (Terminal) and typing nslookup 127.0.0.1 (put in your WiFly ip address, 127.0.0.1 is just an example)
-Note there is also a Static IP command, but I much prefer the hostname trick if you can get that to work.
-
-  Good luck!
-  David Fisher 10-2-2015
+/**
+ * The purpose of this sketch is to help you connect your WiFly module to your WiFi network from your Sparkfun Redbot board.
+ * You will use the RoseBotFirmata for all Python/Scratch programs and you will use this sketch ONLY to get your WiFly setup.
+ * This sketch is nice because you don't need any other hardware beyong a WiFly and a RedBot (RoseBot).
+ *
+ * In order to use this sketch you need to:
+ *   - Turn power off on the RedBot and unplug the batteries
+ *   - Plug a WiFly module into your RedBot (RoseBot) and flip the switch at the top center of the board to "XBEE SW SERIAL"
+ *   - Plug in the USB cable to RedBot and your computer, then turn on the RedBot Power switch
+ *   - Make sure you have selected Tools->Board Arduino Uno and you have the Tools->Port set, then upload this sketch to your RedBot
+ *   - Open the Serial Monitor (icon in top right that looks like a magnifying glass)
+ *   - Set the Serial Monitor to "Carriage Return" and "115200 baud" (keep Autoscroll checked)
+ *     - Note, the speed used for the Serial Monitor is not necessarially (and probably isn't) the same speed that WiFly uses (totally ok)
+ *   * Follow the prompts to setup your WiFly (make sure to always finish a recipe with a save then a reboot, s then r)
+ *     - Depending on your setup, you should probably write down the WiFly's ip address when you do the reboot too!
+ *   - After your WiFly is setup, open and upload the Examples -> RoseBot -> RoseBotFirmata sketch onto RedBot board
+ *   - Power down, remove the USB cable, flip the switch back to "XBEE HW SERIAL", plug in the batteries, then turn power on.
+ *   - You should be able to run Python and Scratch programs to drive the RoseBot again
+ *
+ * There are many things you can do with this sketch, but here are the common recipes that I predict you'll need.
+ *
+ * #1.  Set the baudrate to 57600 for a new WiFly
+ * When you buy a new WiFly module and plug it in for the very first time the baudrate is 9600.  You need to fix that.
+ * The first time you ever connect you will need to connect to WiFly using the 9600 baudrate and send some commands.  Run the steps
+ * shown above and for the * step, you'll be running these commands:
+ *   set uart baudrate 57600
+ *   save
+ *   reboot
+ * You'll do that using the menu shortcuts:
+ * (select option 1 to connect at 9600, then send each command below, one at a time)
+ *   b 2
+ *   s
+ *   r
+ * You will only need to do this once ever.  After your WiFly reboots it will be at a different baudrate.  Also after a reboot
+ 8 your WiFly will no longer be in command mode.  So after this r command, you need to close the Serial Monitor then reopen it.
+ * Next time you are asked to connect use the 57600 option.
+ *
+ *
+ * #2.  Get the WiFly onto your WiFi network.
+ * Connect at whatever baudrate your WiFly is using from the recipe above (probably 57600 which is choice 2).  Then you'll use
+ * these commands:
+ *   set wlan join 1
+ *   scan
+ *   set wlan ssid YOUR$WIFI$NAME$NO$SPACES
+ *   set wlan pass ifUneed1
+ *   save
+ *   reboot
+ * You'll do that using the menu shortcuts:
+ *   a
+ *   1
+ *   3 YOUR WIFI NAME NO SPACES
+ *   4 ifUneed1
+ *   s
+ *   r
+ * Note, this sketch will convert spaces for parameters in $ for you.  The WiFly doesn't like spaces so you use $ instead, but that
+ * is all handled internally by this sketch.  The reboot should show you the IP Address of your WiFly on the network.  Write that down.
+ *
+ *
+ * #3. Getting the IP Address of your WiFly if you forgot it.
+ * If you forgot to write down your IP address or if it magically changed on you from a DHCP lease renewal you need to do this:
+ *   get ip a
+ *   exit
+ * You'll do that using the menu shortcuts:
+ *   i
+ *   x
+ * Write it down.  BTW you can try to avoid IP Addresses by setting the WiFly hostname, for example
+ *   h r05
+ * To name your WiFly, then maybe your WiFi network will use the hostname to give you a NAMED address.  If you try that trick you can
+ * figure out if it worked by opening a command window (Terminal) and typing nslookup 127.0.0.1 (put in your WiFly ip address, 127.0.0.1 is just an example)
+ * Note there is also a Static IP command, but I much prefer the hostname trick if you can get that to work.
+ *
+ * Note, there are many additional commands that you can learn about from the WiFly user's guide:
+ * http://cdn.sparkfun.com/datasheets/Wireless/WiFi/rn-wiflycr-ug-v1.2r.pdf
+ * Learn about commands you need to drop into manual mode to use them.
+ *
+ *   Good luck!
+ *   David Fisher 10-2-2015
  */
 
 #include <SoftwareSerial.h>
@@ -260,6 +264,17 @@ void loop() {
       Serial.println(F("exit"));
       WiflySerial.print(F("exit\r"));
       runManualMode();  // never to return
+      break;
+    case 'm':
+      // This is a hidden command that we need at Rose.
+      Serial.println(F("m")); // Display the user's selection
+      Serial.println(F("get mac"));
+      WiflySerial.print(F("get mac\r"));
+      displayPrintableWiFlyCharacters(2000);
+      break;
+    default:
+      Serial.print(selection);
+      Serial.println(F("Unknown command"));
       break;
   }
   delay(100); // not required I just like having small delays at the end of the loop function if possible. :)
