@@ -37,7 +37,7 @@
 #include <NewPing.h>
 #include <Stepper.h>
 #include <EnableInterrupt.h>
-#include <SPI.h>  
+#include <SPI.h>
 #include <Pixy.h>
 #include <avr/wdt.h>
 
@@ -69,9 +69,10 @@
 #define STEPPER_STEP 1
 #define STEPPER_LIBRARY_VERSION 2
 
-#define PIXY_SET_SERVOS 0
-#define PIXY_SET_BRIGHTNESS 1
-#define PIXY_SET_LED 2
+#define PIXY_INIT 0
+#define PIXY_SET_SERVOS 1
+#define PIXY_SET_BRIGHTNESS 2
+#define PIXY_SET_LED 3
 
 /*==============================================================================
  * GLOBAL VARIABLES
@@ -141,7 +142,7 @@ void interruptFunctionRight() {
 /* Pixy Support */
 Pixy pixy;
 boolean pixyIsReporting = false;  // Determines if Pixy data will be sent.
-byte maxPixyBlocks = 5;  // Sets the maximum number of Pixy blocks to report.
+byte pixyMaxBlocks = 5;  // Sets the maximum number of Pixy blocks to report.
 
 // Ping variables
 int numLoops = 0 ;
@@ -749,13 +750,15 @@ void sysexCallback(byte command, byte argc, byte *argv)
       enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
       enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
       break ;
-    case PIXY_INIT:
-      pixy.init()
-      pixyIsReporting = true;
-      maxPixyBlocks = argv[0]; 
-      break;
-    case PIXY_SET_COMMAND:
-      if (argv[0] == PIXY_SET_SERVOS) {
+    case PIXY_CONFIG:
+      if (argv[0] == PIXY_INIT) {
+        pixy.init();
+        pixyIsReporting = true;
+        pixyMaxBlocks = argv[0];
+        if (pixyMaxBlocks == 0) {
+          pixyIsReporting = false;
+        }
+      } else if (argv[0] == PIXY_SET_SERVOS) {
         int s0 = argv[1] + (argv[2] << 7);
         int s1 = argv[3] + (argv[4] << 7);
         pixy.setServos(s0, s1);
@@ -1026,7 +1029,7 @@ void loop()
 {
   byte pin, analogPin;
   int pingResult = 0;
-  byte numPixyBlocks, pixyBlockIndex;
+  byte pixyBlockIndex, numPixyBlocks;
 
   /* DIGITALREAD - as fast as possible, check for changes and output them to the
    * FTDI buffer using Serial.print()  */
@@ -1088,10 +1091,10 @@ void loop()
     if (encoderIsReporting) {
       disableInterrupt(encoderPin1);
       disableInterrupt(encoderPin2);
-      encoderLSBLeft = interruptCountLeft & 0x7f ;
-      encoderMSBLeft = (interruptCountLeft >> 7) & 0x7f ;
-      encoderLSBRight = interruptCountRight & 0x7f ;
-      encoderMSBRight = (interruptCountRight >> 7) & 0x7f ;
+      encoderLSBLeft = interruptCountLeft & 0x7f;
+      encoderMSBLeft = (interruptCountLeft >> 7) & 0x7f;
+      encoderLSBRight = interruptCountRight & 0x7f;
+      encoderMSBRight = (interruptCountRight >> 7) & 0x7f;
       Firmata.write(START_SYSEX);
       Firmata.write(ENCODER_DATA);
       Firmata.write(encoderPin1);
@@ -1111,8 +1114,8 @@ void loop()
       Firmata.write(START_SYSEX);
       Firmata.write(PIXY_DATA);
       Firmata.write(numPixyBlocks);
-      if (maxPixyBlocks != 0 && numPixyBlocks > maxPixyBlocks) {
-        numPixyBlocks = maxPixyBlocks;
+      if (numPixyBlocks > pixyMaxBlocks) {
+        numPixyBlocks = pixyMaxBlocks;
       }
       for (pixyBlockIndex = 0; pixyBlockIndex < numPixyBlocks; pixyBlockIndex++) {
         writePixyBlock(pixyBlockIndex);
@@ -1120,7 +1123,7 @@ void loop()
       Firmata.write(END_SYSEX);
     }
   }
-  if( keepAliveInterval ) {
+  if (keepAliveInterval) {
     currentMillis = millis();
     if (currentMillis - previousKeepAliveMillis > keepAliveInterval*1000) {
       systemResetCallback();
@@ -1128,7 +1131,9 @@ void loop()
   }
 }
 
-
+/**
+ * Writes a Pixy block of data using Firmata.write.
+ */
 void writePixyBlock(byte pixyBlockIndex) {
 //pixy.blocks[i].signature The signature number of the detected object (1-7 for normal signatures)
 //pixy.blocks[i].x The x location of the center of the detected object (0 to 319)
@@ -1136,7 +1141,6 @@ void writePixyBlock(byte pixyBlockIndex) {
 //pixy.blocks[i].width The width of the detected object (1 to 320)
 //pixy.blocks[i].height The height of the detected object (1 to 200)
 //pixy.blocks[i].angle The angle of the object detected object if the detected object is a color code.
-//pixy.blocks[i].print() A member function that prints the detected object information to the serial port
   Firmata.write(pixy.blocks[pixyBlockIndex].signature & 0x7f);
   Firmata.write((pixy.blocks[pixyBlockIndex].signature >> 7) & 0x7f);
   Firmata.write(pixy.blocks[pixyBlockIndex].x & 0x7f);
@@ -1161,5 +1165,3 @@ void printData(char * id,  long data)
   Firmata.sendString(id) ;
   Firmata.sendString(myArray);
 }
-
-
