@@ -124,7 +124,7 @@ byte servoCount = 0;
 
 /* Rotary Encoder Support */
 byte  encoderMSBLeft, encoderLSBLeft,  encoderMSBRight, encoderLSBRight;     // sysex data registers
-uint8_t encoderPin1, encoderPin2 ; // user specified encoder pins
+uint8_t encoderPin1, encoderPin2; // user specified encoder pins
 boolean encoderIsReporting = false;   // flag indicating if the encoders are counting and reporting.
 
 volatile uint16_t interruptCountLeft = 0; // The count will go back to 0 after hitting 65535.
@@ -145,24 +145,24 @@ boolean pixyIsReporting = false;  // Determines if Pixy data will be sent.
 byte pixyMaxBlocks = 5;  // Sets the maximum number of Pixy blocks to report.
 
 // Ping variables
-int numLoops = 0 ;
-int pingLoopCounter = 0 ;
+int numLoops = 0;
+int pingLoopCounter = 0;
 
 
-int numActiveSonars = 0 ; // number of sonars attached
-uint8_t sonarPinNumbers[MAX_SONARS] ;
-int nextSonar = 0 ; // index into sonars[] for next device
+int numActiveSonars = 0; // number of sonars attached
+uint8_t sonarPinNumbers[MAX_SONARS];
+int nextSonar = 0; // index into sonars[] for next device
 
 // array to hold up to 6 instances of sonar devices
-NewPing *sonars[MAX_SONARS] ;
+NewPing *sonars[MAX_SONARS];
 
 uint8_t sonarTriggerPin;
-uint8_t sonarEchoPin ;
+uint8_t sonarEchoPin;
 uint8_t currentSonar = 0;            // Keeps track of which sensor is active.
 
-uint8_t pingInterval = 33 ;  // Milliseconds between sensor pings (29ms is about the min to avoid
+uint8_t pingInterval = 33;  // Milliseconds between sensor pings (29ms is about the min to avoid
 // cross- sensor echo).
-byte sonarMSB, sonarLSB ;
+byte sonarMSB, sonarLSB;
 
 // Stepper Motor
 Stepper *stepper = NULL;
@@ -390,14 +390,14 @@ void setPinModeCallback(byte pin, int mode)
       }
       break;
     /*
-        case ENCODER:
+        case;:
           // enable the pullups for an encoder pin
           pinMode(pin, INPUT);
           digitalWrite(pin, HIGH);
 
           // used as part of encoder sysex message
-          pinConfig[pin] = ENCODER ;
-          break ;
+          pinConfig[pin] = ENCODER;
+          break;
     */
     case I2C:
       if (IS_PIN_I2C(pin)) {
@@ -407,17 +407,20 @@ void setPinModeCallback(byte pin, int mode)
       }
       break;
     case TONE:
-      pinConfig[pin] = TONE ;
-      break ;
+      pinConfig[pin] = TONE;
+      break;
     case SONAR:
-      pinConfig[pin] = SONAR ;
-      break ;
+      pinConfig[pin] = SONAR;
+      break;
     case STEPPER:
-      pinConfig[pin] = STEPPER ;
-      break ;
+      pinConfig[pin] = STEPPER;
+      break;
+    case PIXY:
+      pinConfig[pin] = PIXY;
+      break;
     default:
       Firmata.sendString("Unknown pin mode"); // TODO: put error msgs in EEPROM
-      break ;
+      break;
   }
   // TODO: save status to EEPROM here, if changed
 }
@@ -519,9 +522,9 @@ void sysexCallback(byte command, byte argc, byte *argv)
   byte data;
   int slaveRegister;
   unsigned int delayTime;
-  byte pin ;// used for tone
-  int frequency ;
-  int duration ;
+  byte pin;// used for tone
+  int frequency;
+  int duration;
 
   switch (command) {
     case I2C_REQUEST:
@@ -661,8 +664,8 @@ void sysexCallback(byte command, byte argc, byte *argv)
           samplingInterval = MINIMUM_SAMPLING_INTERVAL;
         }
         /* calculate number of loops per ping */
-        numLoops = INTER_PING_INTERVAL / samplingInterval ;
-        //numLoops = 1 ;
+        numLoops = INTER_PING_INTERVAL / samplingInterval;
+        //numLoops = 1;
       }
       else {
         //Firmata.sendString("Not enough data");
@@ -733,8 +736,8 @@ void sysexCallback(byte command, byte argc, byte *argv)
       // instantiate an encoder object with user's
       // requested pin designators
 
-      encoderPin1 = argv[0] ;
-      encoderPin2 = argv[1] ;
+      encoderPin1 = argv[0];
+      encoderPin2 = argv[1];
 
       pinMode(encoderPin1, INPUT);
       digitalWrite(encoderPin1, HIGH);
@@ -743,18 +746,19 @@ void sysexCallback(byte command, byte argc, byte *argv)
       digitalWrite(encoderPin2, HIGH);
       // used as part of encoder sysex message
 
-      pinConfig[encoderPin1] = ENCODER ;
-      pinConfig[encoderPin2] = ENCODER ;
+      pinConfig[encoderPin1] = ENCODER;
+      pinConfig[encoderPin2] = ENCODER;
 
-      encoderIsReporting = true ;
+      encoderIsReporting = true;
       enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
       enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
-      break ;
+      break;
     case PIXY_CONFIG:
       if (argv[0] == PIXY_INIT) {
         pixy.init();
+        pinConfig[encoderPin1] = PIXY;
         pixyIsReporting = true;
-        pixyMaxBlocks = argv[0];
+        pixyMaxBlocks = argv[1];
         if (pixyMaxBlocks == 0) {
           pixyIsReporting = false;
         }
@@ -788,7 +792,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
       else if (toneCommand == TONE_NO_TONE) {
         noTone(pin);
       }
-      break ;
+      break;
 
     // arg0 = trigger pin
     // arg1 = echo pin
@@ -796,68 +800,68 @@ void sysexCallback(byte command, byte argc, byte *argv)
     // arg3 = maxdistance lsb
     // arg4 = maxdistance msb
     case SONAR_CONFIG :
-      int max_distance ;
+      int max_distance;
       if ( numActiveSonars < MAX_SONARS)
       {
-        sonarTriggerPin = argv[0] ;
-        sonarEchoPin = argv[1] ;
+        sonarTriggerPin = argv[0];
+        sonarEchoPin = argv[1];
         // set interval to a minium of 33 ms.
         if ( argv[2] >= 33 ) {
-          pingInterval = argv[2] ;
+          pingInterval = argv[2];
         }
         else {
-          pingInterval = 33 ;
+          pingInterval = 33;
         }
-        max_distance = argv[3] + (argv[4] << 7 ) ;
-        sonarPinNumbers[numActiveSonars] = sonarTriggerPin ;
+        max_distance = argv[3] + (argv[4] << 7 );
+        sonarPinNumbers[numActiveSonars] = sonarTriggerPin;
 
         setPinModeCallback(sonarTriggerPin, SONAR);
         setPinModeCallback(sonarEchoPin, SONAR);
-        sonars[numActiveSonars] = new NewPing(sonarTriggerPin, sonarEchoPin, max_distance) ;
-        numActiveSonars++ ;
+        sonars[numActiveSonars] = new NewPing(sonarTriggerPin, sonarEchoPin, max_distance);
+        numActiveSonars++;
       }
       else {
         Firmata.sendString("PING_CONFIG Error: Exceeded number of supported ping devices");
       }
-      break ;
+      break;
 
     case STEPPER_DATA:
       // determine if this a STEPPER_CONFIGURE command or STEPPER_OPERATE command
       if (argv[0] == STEPPER_CONFIGURE)
       {
         int numSteps = argv[1] + (argv[2] << 7);
-        int pin1 = argv[3] ;
-        int pin2 = argv[4] ;
+        int pin1 = argv[3];
+        int pin2 = argv[4];
         if ( argc == 5 )
         {
           // two pin motor
-          stepper = new Stepper(numSteps, pin1, pin2) ;
+          stepper = new Stepper(numSteps, pin1, pin2);
         }
         else if (argc == 7 ) // 4 wire motor
         {
-          int pin3 = argv[5] ;
-          int pin4 = argv[6] ;
-          stepper =  new Stepper(numSteps, pin1, pin2, pin3, pin4) ;
+          int pin3 = argv[5];
+          int pin4 = argv[6];
+          stepper =  new Stepper(numSteps, pin1, pin2, pin3, pin4);
         }
         else
         {
           Firmata.sendString("STEPPER CONFIG Error: Wrong Number of arguments");
-          printData("argc = ", argc) ;
+          printData("argc = ", argc);
         }
       }
       else if ( argv[0] == STEPPER_STEP )
       {
         long speed = (long)argv[1] | ((long)argv[2] << 7) | ((long)argv[3] << 14);
         int numSteps = argv[4] + (argv[5] << 7);
-        int direction = argv[6] ;
+        int direction = argv[6];
         if (stepper != NULL )
         {
-          stepper->setSpeed(speed) ;
+          stepper->setSpeed(speed);
           if (direction == 0 )
           {
-            numSteps *= -1 ;
+            numSteps *= -1;
           }
-          stepper->step(numSteps) ;
+          stepper->step(numSteps);
         }
         else
         {
@@ -868,7 +872,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
       {
         if ( stepper != NULL )
         {
-          int version = stepper->version() ;
+          int version = stepper->version();
           Firmata.write(START_SYSEX);
           Firmata.write(STEPPER_DATA);
           Firmata.write(version & 0x7F);
@@ -880,13 +884,13 @@ void sysexCallback(byte command, byte argc, byte *argv)
           // did not find a configured stepper
           Firmata.sendString("STEPPER FIRMWARE VERSION Error: NO MOTORS CONFIGURED");
         }
-        break ;
+        break;
       }
       else
       {
         Firmata.sendString("STEPPER CONFIG Error: UNKNOWN STEPPER COMMAND");
       }
-      break ;
+      break;
   }
 }
 
@@ -945,7 +949,7 @@ void systemResetCallback()
       setPinModeCallback(i, ANALOG);
     }
     else if ( IS_PIN_TONE(i)) {
-      noTone(i) ;
+      noTone(i);
     }
     else {
       // sets the output to 0, configures portConfigInputs
@@ -955,20 +959,20 @@ void systemResetCallback()
     servoPinMap[i] = 255;
   }
   // stop pinging
-  numActiveSonars = 0 ;
+  numActiveSonars = 0;
   for (int i = 0; i < MAX_SONARS; i++) {
-    sonarPinNumbers[i] = IGNORE ;
+    sonarPinNumbers[i] = IGNORE;
     if ( sonars[i] ) {
-      sonars[i] = NULL ;
+      sonars[i] = NULL;
     }
   }
-  numActiveSonars = 0 ;
+  numActiveSonars = 0;
 
   // by default, do not report any analog inputs
   analogInputsToReport = 0;
 
   // clear stepper pointer
-  stepper = NULL ;
+  stepper = NULL;
 
   detachedServoCount = 0;
   servoCount = 0;
@@ -989,7 +993,7 @@ void systemResetCallback()
   else {
      wdt_enable(WDTO_15MS);
      while(1)
-        ;
+       ;
   }
 }
 
@@ -1005,18 +1009,18 @@ void setup()
   Firmata.attach(START_SYSEX, sysexCallback);
   Firmata.attach(SYSTEM_RESET, systemResetCallback);
 
-  numActiveSonars = 0 ;
-  pingLoopCounter = 0 ;
+  numActiveSonars = 0;
+  pingLoopCounter = 0;
   for (uint8_t i = 1; i < MAX_SONARS; i++) // Set the starting time for each sensor.
   {
-    sonarPinNumbers[i] = IGNORE ;
+    sonarPinNumbers[i] = IGNORE;
     if ( sonars[i] ) {
-      sonars[i] = NULL ;
+      sonars[i] = NULL;
     }
   }
 
   /* calculate number of loops per ping */
-  numLoops = INTER_PING_INTERVAL / samplingInterval ;
+  numLoops = INTER_PING_INTERVAL / samplingInterval;
 
   Firmata.begin(57600);
   systemResetCallback();  // reset to default config
@@ -1048,25 +1052,25 @@ void loop()
 
     if ( pingLoopCounter++ > numLoops)
     {
-      pingLoopCounter = 0 ;
+      pingLoopCounter = 0;
       if (numActiveSonars)
       {
         unsigned int uS = sonars[nextSonar]->ping();
         // Convert ping time to distance in cm and print
-        pingResult = uS / US_ROUNDTRIP_CM ;
-        currentSonar = nextSonar ;
+        pingResult = uS / US_ROUNDTRIP_CM;
+        currentSonar = nextSonar;
         if ( nextSonar++ >= numActiveSonars - 1)
         {
-          nextSonar = 0 ;
+          nextSonar = 0;
         }
-        sonarLSB = pingResult & 0x7f ;
-        sonarMSB = pingResult >> 7 & 0x7f ;
+        sonarLSB = pingResult & 0x7f;
+        sonarMSB = pingResult >> 7 & 0x7f;
 
         Firmata.write(START_SYSEX);
-        Firmata.write(SONAR_DATA) ;
-        Firmata.write(sonarPinNumbers[currentSonar]) ;
-        Firmata.write(sonarLSB) ;
-        Firmata.write(sonarMSB) ;
+        Firmata.write(SONAR_DATA);
+        Firmata.write(sonarPinNumbers[currentSonar]);
+        Firmata.write(sonarLSB);
+        Firmata.write(sonarMSB);
         Firmata.write(END_SYSEX);
       }
     }
@@ -1158,10 +1162,10 @@ void writePixyBlock(byte pixyBlockIndex) {
 
 void printData(char * id,  long data)
 {
-  char myArray[64] ;
+  char myArray[64];
 
   String myString = String(data);
-  myString.toCharArray(myArray, 64) ;
-  Firmata.sendString(id) ;
+  myString.toCharArray(myArray, 64);
+  Firmata.sendString(id);
   Firmata.sendString(myArray);
 }
