@@ -144,8 +144,7 @@ void interruptFunctionRight() {
 }
 
 /* Pixy Support */
-Pixy pixy;
-boolean pixyIsInitialized = false;  // Flag to store if pixy.init() has been called.
+Pixy* pixyPtr = NULL;
 boolean pixyIsReporting = false;  // Determines if Pixy data will be sent.
 byte pixyMaxBlocks = 5;  // Sets the maximum number of Pixy blocks to report.
 
@@ -755,8 +754,8 @@ void sysexCallback(byte command, byte argc, byte *argv) {
       break;
     case PIXY_CONFIG:
       if (argv[0] == PIXY_INIT) {
-        pixy.init();
-        pixyIsInitialized = true;
+        pixyPtr = new Pixy();
+        pixyPtr->init();
         // mark pins as Pixy so they are ignore in non Pixy data requests
         setPinModeCallback(PIN_PIXY_MOSI, PIXY);
         setPinModeCallback(PIN_PIXY_MISO, PIXY);
@@ -766,26 +765,26 @@ void sysexCallback(byte command, byte argc, byte *argv) {
           pixyIsReporting = false;
         }
       } else if (argv[0] == PIXY_SET_SERVOS) {
-        if (!pixyIsInitialized) {
+        if (pixyPtr == NULL) {
           return;
         }
         int s0 = argv[1] + (argv[2] << 7);
         int s1 = argv[3] + (argv[4] << 7);
-        pixy.setServos(s0, s1);
+        pixyPtr->setServos(s0, s1);
       } else if (argv[0] == PIXY_SET_BRIGHTNESS) {
-        if (!pixyIsInitialized) {
+        if (pixyPtr == NULL) {
           return;
         }
         int brightness = argv[1] + (argv[2] << 7);
-        pixy.setBrightness(brightness);
+        pixyPtr->setBrightness(brightness);
       } else if (argv[0] == PIXY_SET_LED) {
-        if (!pixyIsInitialized) {
+        if (pixyPtr == NULL) {
           return;
         }
         int r = argv[1] + (argv[2] << 7);
         int g = argv[3] + (argv[4] << 7);
         int b = argv[5] + (argv[6] << 7);
-        pixy.setLED(r, g, b);
+        pixyPtr->setLED(r, g, b);
       }
       break;
     case TONE_DATA:
@@ -1126,7 +1125,7 @@ void loop()
       enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
     }
     if (pixyIsReporting) {
-      numPixyBlocks = pixy.getBlocks();
+      numPixyBlocks = pixyPtr->getBlocks();
       Firmata.write(START_SYSEX);
       Firmata.write(PIXY_DATA);
       Firmata.write(numPixyBlocks);
@@ -1157,18 +1156,18 @@ void writePixyBlock(byte pixyBlockIndex) {
   // width - The width of the detected object (1 to 320)
   // height - The height of the detected object (1 to 200)
   // angle - The angle of the object detected object if the detected object is a color code.
-  Firmata.write(pixy.blocks[pixyBlockIndex].signature & 0x7f);
-  Firmata.write((pixy.blocks[pixyBlockIndex].signature >> 7) & 0x7f);
-  Firmata.write(pixy.blocks[pixyBlockIndex].x & 0x7f);
-  Firmata.write((pixy.blocks[pixyBlockIndex].x >> 7) & 0x7f);
-  Firmata.write(pixy.blocks[pixyBlockIndex].y & 0x7f);
-  Firmata.write((pixy.blocks[pixyBlockIndex].y >> 7) & 0x7f);
-  Firmata.write(pixy.blocks[pixyBlockIndex].width & 0x7f);
-  Firmata.write((pixy.blocks[pixyBlockIndex].width >> 7) & 0x7f);
-  Firmata.write(pixy.blocks[pixyBlockIndex].height & 0x7f);
-  Firmata.write((pixy.blocks[pixyBlockIndex].height >> 7) & 0x7f);
-  Firmata.write(pixy.blocks[pixyBlockIndex].angle & 0x7f);
-  Firmata.write((pixy.blocks[pixyBlockIndex].angle >> 7) & 0x7f);
+  Firmata.write(pixyPtr->blocks[pixyBlockIndex].signature & 0x7f);
+  Firmata.write((pixyPtr->blocks[pixyBlockIndex].signature >> 7) & 0x7f);
+  Firmata.write(pixyPtr->blocks[pixyBlockIndex].x & 0x7f);
+  Firmata.write((pixyPtr->blocks[pixyBlockIndex].x >> 7) & 0x7f);
+  Firmata.write(pixyPtr->blocks[pixyBlockIndex].y & 0x7f);
+  Firmata.write((pixyPtr->blocks[pixyBlockIndex].y >> 7) & 0x7f);
+  Firmata.write(pixyPtr->blocks[pixyBlockIndex].width & 0x7f);
+  Firmata.write((pixyPtr->blocks[pixyBlockIndex].width >> 7) & 0x7f);
+  Firmata.write(pixyPtr->blocks[pixyBlockIndex].height & 0x7f);
+  Firmata.write((pixyPtr->blocks[pixyBlockIndex].height >> 7) & 0x7f);
+  Firmata.write(pixyPtr->blocks[pixyBlockIndex].angle & 0x7f);
+  Firmata.write((pixyPtr->blocks[pixyBlockIndex].angle >> 7) & 0x7f);
 }
 
 void printData(char * id,  long data) {
