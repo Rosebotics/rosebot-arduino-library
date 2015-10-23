@@ -28,7 +28,7 @@
 
   Last updated by Jeff Hoefs: April 11, 2015
         Alan Yorinks August 5, 2015
-        David Fisher Oct 2, 2015
+        David Fisher Oct 22, 2015
 */
 
 #include <Servo.h>
@@ -73,6 +73,10 @@
 #define PIXY_SET_SERVOS 1
 #define PIXY_SET_BRIGHTNESS 2
 #define PIXY_SET_LED 3
+
+#define PIN_PIXY_MOSI 11
+#define PIN_PIXY_MISO 12
+
 
 /*==============================================================================
  * GLOBAL VARIABLES
@@ -141,6 +145,7 @@ void interruptFunctionRight() {
 
 /* Pixy Support */
 Pixy pixy;
+boolean pixyIsInitialized = false;  // Flag to store if pixy.init() has been called.
 boolean pixyIsReporting = false;  // Determines if Pixy data will be sent.
 byte pixyMaxBlocks = 5;  // Sets the maximum number of Pixy blocks to report.
 
@@ -473,8 +478,7 @@ void digitalWriteCallback(byte port, int value)
  */
 //void FirmataClass::setAnalogPinReporting(byte pin, byte state) {
 //}
-void reportAnalogCallback(byte analogPin, int value)
-{
+void reportAnalogCallback(byte analogPin, int value) {
   if (analogPin < TOTAL_ANALOG_PINS) {
     if (value == 0) {
       analogInputsToReport = analogInputsToReport & ~ (1 << analogPin);
@@ -493,8 +497,7 @@ void reportAnalogCallback(byte analogPin, int value)
   // TODO: save status to EEPROM here, if changed
 }
 
-void reportDigitalCallback(byte port, int value)
-{
+void reportDigitalCallback(byte port, int value) {
   if (port < TOTAL_PORTS) {
     reportPINs[port] = (byte)value;
     // Send port value immediately. This is helpful when connected via
@@ -514,8 +517,7 @@ void reportDigitalCallback(byte port, int value)
  * SYSEX-BASED commands
  *============================================================================*/
 
-void sysexCallback(byte command, byte argc, byte *argv)
-{
+void sysexCallback(byte command, byte argc, byte *argv) {
   byte mode;
   byte stopTX;
   byte slaveAddress;
@@ -543,10 +545,8 @@ void sysexCallback(byte command, byte argc, byte *argv)
         stopTX = I2C_RESTART_TX; // default
       }
       else {
-
         stopTX = I2C_STOP_TX;
       }
-
 
       switch (mode) {
         case I2C_WRITE:
@@ -756,20 +756,32 @@ void sysexCallback(byte command, byte argc, byte *argv)
     case PIXY_CONFIG:
       if (argv[0] == PIXY_INIT) {
         pixy.init();
-        pinConfig[encoderPin1] = PIXY;
+        pixyIsInitialized = true;
+        // mark pins as Pixy so they are ignore in non Pixy data requests
+        setPinModeCallback(PIN_PIXY_MOSI, PIXY);
+        setPinModeCallback(PIN_PIXY_MISO, PIXY);
         pixyIsReporting = true;
         pixyMaxBlocks = argv[1];
         if (pixyMaxBlocks == 0) {
           pixyIsReporting = false;
         }
       } else if (argv[0] == PIXY_SET_SERVOS) {
+        if (!pixyIsInitialized) {
+          return;
+        }
         int s0 = argv[1] + (argv[2] << 7);
         int s1 = argv[3] + (argv[4] << 7);
         pixy.setServos(s0, s1);
       } else if (argv[0] == PIXY_SET_BRIGHTNESS) {
+        if (!pixyIsInitialized) {
+          return;
+        }
         int brightness = argv[1] + (argv[2] << 7);
         pixy.setBrightness(brightness);
       } else if (argv[0] == PIXY_SET_LED) {
+        if (!pixyIsInitialized) {
+          return;
+        }
         int r = argv[1] + (argv[2] << 7);
         int g = argv[3] + (argv[4] << 7);
         int b = argv[5] + (argv[6] << 7);
@@ -1139,12 +1151,12 @@ void loop()
  * Writes a Pixy block of data using Firmata.write.
  */
 void writePixyBlock(byte pixyBlockIndex) {
-//pixy.blocks[i].signature The signature number of the detected object (1-7 for normal signatures)
-//pixy.blocks[i].x The x location of the center of the detected object (0 to 319)
-//pixy.blocks[i].y The y location of the center of the detected object (0 to 199)
-//pixy.blocks[i].width The width of the detected object (1 to 320)
-//pixy.blocks[i].height The height of the detected object (1 to 200)
-//pixy.blocks[i].angle The angle of the object detected object if the detected object is a color code.
+  // signature - The signature number of the detected object (1-7 for normal signatures)
+  // x - The x location of the center of the detected object (0 to 319)
+  // y - The y location of the center of the detected object (0 to 199)
+  // width - The width of the detected object (1 to 320)
+  // height - The height of the detected object (1 to 200)
+  // angle - The angle of the object detected object if the detected object is a color code.
   Firmata.write(pixy.blocks[pixyBlockIndex].signature & 0x7f);
   Firmata.write((pixy.blocks[pixyBlockIndex].signature >> 7) & 0x7f);
   Firmata.write(pixy.blocks[pixyBlockIndex].x & 0x7f);
@@ -1159,11 +1171,8 @@ void writePixyBlock(byte pixyBlockIndex) {
   Firmata.write((pixy.blocks[pixyBlockIndex].angle >> 7) & 0x7f);
 }
 
-
-void printData(char * id,  long data)
-{
+void printData(char * id,  long data) {
   char myArray[64];
-
   String myString = String(data);
   myString.toCharArray(myArray, 64);
   Firmata.sendString(id);
