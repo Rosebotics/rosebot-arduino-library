@@ -56,6 +56,7 @@
 
 // the minimum interval for sampling analog input
 #define MINIMUM_SAMPLING_INTERVAL 10
+#define MINIMUM_SAMPLING_INTERVAL_WITH_PIXY 25
 
 #define REGISTER_NOT_SPECIFIED -1
 
@@ -1008,8 +1009,7 @@ void systemResetCallback()
   }
 }
 
-void setup()
-{
+void setup() {
   Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
 
   Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
@@ -1063,8 +1063,7 @@ void loop()
 
     if ( pingLoopCounter++ > numLoops) {
       pingLoopCounter = 0;
-      if (numActiveSonars)
-      {
+      if (numActiveSonars) {
         unsigned int uS = sonars[nextSonar]->ping();
         // Convert ping time to distance in cm and print
         pingResult = uS / US_ROUNDTRIP_CM;
@@ -1126,7 +1125,10 @@ void loop()
     if (pixyIsReporting) {
       numPixyBlocks = pixyPtr->getBlocks();
       // Only send Pixy data if a block was found.
-      if (numPixyBlocks) {
+
+        if (samplingInterval < MINIMUM_SAMPLING_INTERVAL_WITH_PIXY) {
+          samplingInterval = MINIMUM_SAMPLING_INTERVAL_WITH_PIXY;
+        }
         if (numPixyBlocks > pixyMaxBlocks) {
           numPixyBlocks = pixyMaxBlocks;
         }
@@ -1137,7 +1139,7 @@ void loop()
           writePixyBlock(pixyBlockIndex);
         }
         Firmata.write(END_SYSEX);
-      }
+
     }
   }
   if (keepAliveInterval) {
