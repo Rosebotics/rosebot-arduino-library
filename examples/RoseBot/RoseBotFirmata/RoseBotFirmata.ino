@@ -1061,8 +1061,7 @@ void loop()
   if (currentMillis - previousMillis > samplingInterval) {
     previousMillis += samplingInterval;
 
-    if ( pingLoopCounter++ > numLoops)
-    {
+    if ( pingLoopCounter++ > numLoops) {
       pingLoopCounter = 0;
       if (numActiveSonars)
       {
@@ -1126,16 +1125,19 @@ void loop()
     }
     if (pixyIsReporting) {
       numPixyBlocks = pixyPtr->getBlocks();
-      Firmata.write(START_SYSEX);
-      Firmata.write(PIXY_DATA);
-      Firmata.write(numPixyBlocks);
-      if (numPixyBlocks > pixyMaxBlocks) {
-        numPixyBlocks = pixyMaxBlocks;
+      // Only send Pixy data if a block was found.
+      if (numPixyBlocks) {
+        if (numPixyBlocks > pixyMaxBlocks) {
+          numPixyBlocks = pixyMaxBlocks;
+        }
+        Firmata.write(START_SYSEX);
+        Firmata.write(PIXY_DATA);
+        Firmata.write(numPixyBlocks);
+        for (pixyBlockIndex = 0; pixyBlockIndex < numPixyBlocks; pixyBlockIndex++) {
+          writePixyBlock(pixyBlockIndex);
+        }
+        Firmata.write(END_SYSEX);
       }
-      for (pixyBlockIndex = 0; pixyBlockIndex < numPixyBlocks; pixyBlockIndex++) {
-        writePixyBlock(pixyBlockIndex);
-      }
-      Firmata.write(END_SYSEX);
     }
   }
   if (keepAliveInterval) {
