@@ -144,6 +144,7 @@ void interruptFunctionRight() {
   interruptCountRight++;
 }
 
+
 /* Pixy Support */
 Pixy* pixyPtr = NULL;
 boolean pixyIsReporting = false;  // Determines if Pixy data will be sent.
@@ -755,8 +756,10 @@ void sysexCallback(byte command, byte argc, byte *argv) {
       break;
     case PIXY_CONFIG:
       if (argv[0] == PIXY_INIT) {
-        pixyPtr = new Pixy();
-        pixyPtr->init();
+        if (pixyPtr == NULL) {
+          pixyPtr = new Pixy();
+          pixyPtr->init();
+        }
         // mark pins as Pixy so they are ignore in non Pixy data requests
         setPinModeCallback(PIN_PIXY_MOSI, PIXY);
         setPinModeCallback(PIN_PIXY_MISO, PIXY);
@@ -939,6 +942,7 @@ void systemResetCallback()
   isResetting = true;
   encoderIsReporting = false;
   pixyIsReporting = false;
+  pixyPtr = NULL;
 
   // initialize a defalt state
   // TODO: option to load config from EEPROM instead of default
@@ -1122,7 +1126,7 @@ void loop()
       enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
       enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
     }
-    if (pixyIsReporting) {
+    if (pixyIsReporting && pixyPtr != NULL) {
       numPixyBlocks = pixyPtr->getBlocks();
       // Only send Pixy data if a block was found.
 
