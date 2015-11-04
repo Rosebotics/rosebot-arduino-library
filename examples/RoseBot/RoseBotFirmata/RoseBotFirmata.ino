@@ -1044,8 +1044,7 @@ void setup() {
 /*==============================================================================
  * LOOP()
  *============================================================================*/
-void loop()
-{
+void loop() {
   byte pin, analogPin;
   int pingResult = 0;
   byte pixyBlockIndex, numPixyBlocks;
@@ -1129,21 +1128,19 @@ void loop()
     if (pixyIsReporting && pixyPtr != NULL) {
       numPixyBlocks = pixyPtr->getBlocks();
       // Only send Pixy data if a block was found.
-
-        if (samplingInterval < MINIMUM_SAMPLING_INTERVAL_WITH_PIXY) {
-          samplingInterval = MINIMUM_SAMPLING_INTERVAL_WITH_PIXY;
-        }
-        if (numPixyBlocks > pixyMaxBlocks) {
-          numPixyBlocks = pixyMaxBlocks;
-        }
-        Firmata.write(START_SYSEX);
-        Firmata.write(PIXY_DATA);
-        Firmata.write(numPixyBlocks);
-        for (pixyBlockIndex = 0; pixyBlockIndex < numPixyBlocks; pixyBlockIndex++) {
-          writePixyBlock(pixyBlockIndex);
-        }
-        Firmata.write(END_SYSEX);
-
+      if (samplingInterval < MINIMUM_SAMPLING_INTERVAL_WITH_PIXY) {
+        samplingInterval = MINIMUM_SAMPLING_INTERVAL_WITH_PIXY;
+      }
+      if (numPixyBlocks > pixyMaxBlocks) {
+        numPixyBlocks = pixyMaxBlocks;
+      }
+      Firmata.write(START_SYSEX);
+      Firmata.write(PIXY_DATA);
+      Firmata.write(numPixyBlocks);
+      for (pixyBlockIndex = 0; pixyBlockIndex < numPixyBlocks; pixyBlockIndex++) {
+        writePixyBlock(pixyBlockIndex);
+      }
+      Firmata.write(END_SYSEX);
     }
   }
   if (keepAliveInterval) {
