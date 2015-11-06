@@ -1137,7 +1137,7 @@ void loop() {
         writePixyBlock(pixyBlockIndex);
       }
       Firmata.write(END_SYSEX);
-      # Pixy data communication needs to extend the minimum sampling interval.
+      // Pixy data communication needs to extend the minimum sampling interval.
       if (samplingInterval < MINIMUM_SAMPLING_INTERVAL_WITH_PIXY) {
         samplingInterval = MINIMUM_SAMPLING_INTERVAL_WITH_PIXY;
       }
