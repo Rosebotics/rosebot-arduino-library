@@ -1,35 +1,34 @@
-/*
-  This is an adaptation of Arduino StandardFirmata.
-
-  It supports the Sparkfun RedBot robot.
-
-  Firmata is a generic protocol for communicating with microcontrollers
-  from software on a host computer. It is intended to work with
-  any host computer software package.
-
-  To download a host software package, please clink on the following link
-  to open the download page in your default browser.
-
-  https://github.com/firmata/arduino#firmata-client-libraries
-
-  Copyright (C) 2006-2008 Hans-Christoph Steiner.  All rights reserved.
-  Copyright (C) 2010-2011 Paul Stoffregen.  All rights reserved.
-  Copyright (C) 2009 Shigeru Kobayashi.  All rights reserved.
-  Copyright (C) 2009-2015 Jeff Hoefs.  All rights reserved.
-  Copyright (C) 2013-2015 Alan Yorinks. All rights reserved.
-  Modified for RoseBot 2015 David Fisher
-
-  This library is free software; you can redistribute it and/or
-  modify it under the terms of the GNU Lesser General Public
-  License as published by the Free Software Foundation; either
-  version 3 of the License, or (at your option) any later version.
-
-  See file LICENSE.txt for further informations on licensing terms.
-
-  Last updated by Jeff Hoefs: April 11, 2015
-        Alan Yorinks August 5, 2015
-        David Fisher Oct 22, 2015
-*/
+/**
+ *  This is an adaptation of Arduino StandardFirmata.
+ *
+ *  It supports the Sparkfun RedBot robot.
+ *
+ *  Firmata is a generic protocol for communicating with microcontrollers
+ *  from software on a host computer. It is intended to work with
+ *  any host computer software package.
+ *
+ *  To download a host software package, please clink on the following link
+ *  to open the download page in your default browser.
+ *
+ *  https://github.com/firmata/arduino#firmata-client-libraries
+ *
+ *  Copyright (C) 2006-2008 Hans-Christoph Steiner.  All rights reserved.
+ *  Copyright (C) 2010-2011 Paul Stoffregen.  All rights reserved.
+ *  Copyright (C) 2009 Shigeru Kobayashi.  All rights reserved.
+ *  Copyright (C) 2009-2015 Jeff Hoefs.  All rights reserved.
+ *  Copyright (C) 2013-2015 Alan Yorinks. All rights reserved.
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 3 of the License, or (at your option) any later version.
+ *
+ *  See file LICENSE.txt for further informations on licensing terms.
+ *
+ *  Last updated by Jeff Hoefs: April 11th, 2015
+ *        Alan Yorinks August 5th, 2015
+ *        David Fisher Nov 6th, 2015
+ */
 
 #include <Servo.h>
 #include <Wire.h>
@@ -83,26 +82,26 @@
  * GLOBAL VARIABLES
  *============================================================================*/
 
-/* analog inputs */
+// analog inputs
 int analogInputsToReport = 0; // bitwise array to store pin reporting
 
-/* digital input ports */
+// digital input ports
 byte reportPINs[TOTAL_PORTS];       // 1 = report this port, 0 = silence
 byte previousPINs[TOTAL_PORTS];     // previous 8 bits sent
 
-/* pins configuration */
+// pins configuration
 byte pinConfig[TOTAL_PINS];         // configuration of every pin
 byte portConfigInputs[TOTAL_PORTS]; // each bit: 1 = pin in INPUT, 0 = anything else
 int pinState[TOTAL_PINS];           // any value that has been written
 
-/* timer variables */
+// timer variables
 unsigned long currentMillis;        // store the current value from millis()
 unsigned long previousMillis;       // for comparison with currentMillis
 unsigned int samplingInterval = 25; // how often to run the main loop (in ms)
 unsigned long previousKeepAliveMillis;
 unsigned int keepAliveInterval = 0;
 
-/* i2c data */
+// i2c data
 struct i2c_device_info {
   byte addr;
   int reg;
@@ -110,15 +109,13 @@ struct i2c_device_info {
   byte stopTX;
 };
 
-/* for i2c read continuous more */
+// for i2c read continuous more
 i2c_device_info query[MAX_QUERIES];
-
 byte i2cRxData[32];
 boolean isI2CEnabled = false;
 signed char queryIndex = -1;
 // default delay time between i2c read request and Wire.requestFrom()
 unsigned int i2cReadDelayTime = 0;
-
 
 // Servos
 Servo servos[MAX_SERVOS];
@@ -127,11 +124,10 @@ byte detachedServos[MAX_SERVOS];
 byte detachedServoCount = 0;
 byte servoCount = 0;
 
-/* Rotary Encoder Support */
+// Rotary Encoder
 byte  encoderMSBLeft, encoderLSBLeft,  encoderMSBRight, encoderLSBRight;     // sysex data registers
 uint8_t encoderPin1, encoderPin2; // user specified encoder pins
 boolean encoderIsReporting = false;   // flag indicating if the encoders are counting and reporting.
-
 volatile uint16_t interruptCountLeft = 0; // The count will go back to 0 after hitting 65535.
 volatile uint16_t interruptCountRight = 0; // The count will go back to 0 after hitting 65535.
 
@@ -144,43 +140,33 @@ void interruptFunctionRight() {
   interruptCountRight++;
 }
 
-
-/* Pixy Support */
+// Pixy
 Pixy* pixyPtr = NULL;
 boolean pixyIsReporting = false;  // Determines if Pixy data will be sent.
 byte pixyMaxBlocks = 5;  // Sets the maximum number of Pixy blocks to report.
 
-// Ping variables
+// Ultrasonic distance sensor
 int numLoops = 0;
 int pingLoopCounter = 0;
-
-
 int numActiveSonars = 0; // number of sonars attached
 uint8_t sonarPinNumbers[MAX_SONARS];
 int nextSonar = 0; // index into sonars[] for next device
-
-// array to hold up to 6 instances of sonar devices
-NewPing *sonars[MAX_SONARS];
-
+NewPing *sonars[MAX_SONARS]; // array to hold up to 6 instances of sonar devices
 uint8_t sonarTriggerPin;
 uint8_t sonarEchoPin;
-uint8_t currentSonar = 0;            // Keeps track of which sensor is active.
-
-uint8_t pingInterval = 33;  // Milliseconds between sensor pings (29ms is about the min to avoid
-// cross- sensor echo).
+uint8_t currentSonar = 0;  // Keeps track of which sensor is active.
+uint8_t pingInterval = 33; // Milliseconds between sensor pings (29ms is the min to avoid cross-sensor echo).
 byte sonarMSB, sonarLSB;
 
-// Stepper Motor
+// Stepper motor
 Stepper *stepper = NULL;
 
-
+// Keep alive messages
 boolean isResetting = false;
-
 boolean hasReset = false;
 
-/* utility functions */
-void wireWrite(byte data)
-{
+// utility functions
+void wireWrite(byte data) {
 #if ARDUINO >= 100
   Wire.write((byte)data);
 #else
@@ -188,8 +174,7 @@ void wireWrite(byte data)
 #endif
 }
 
-byte wireRead(void)
-{
+byte wireRead(void) {
 #if ARDUINO >= 100
   return Wire.read();
 #else
@@ -201,8 +186,7 @@ byte wireRead(void)
  * FUNCTIONS
  *============================================================================*/
 
-void attachServo(byte pin, int minPulse, int maxPulse)
-{
+void attachServo(byte pin, int minPulse, int maxPulse) {
   if (servoCount < MAX_SERVOS) {
     // reuse indexes of detached servos until all have been reallocated
     if (detachedServoCount > 0) {
@@ -222,8 +206,7 @@ void attachServo(byte pin, int minPulse, int maxPulse)
   }
 }
 
-void detachServo(byte pin)
-{
+void detachServo(byte pin) {
   servos[servoPinMap[pin]].detach();
   // if we're detaching the last servo, decrement the count
   // otherwise store the index of the detached servo
@@ -235,7 +218,6 @@ void detachServo(byte pin)
     detachedServoCount++;
     detachedServos[detachedServoCount - 1] = servoPinMap[pin];
   }
-
   servoPinMap[pin] = 255;
 }
 
@@ -260,7 +242,6 @@ void readAndReportData(byte address, int theRegister, byte numBytes, byte stopTX
   } else {
     theRegister = 0;  // fill the register with a dummy value
   }
-
   Wire.requestFrom(address, numBytes);  // all bytes are returned in requestFrom
 
   // check to be sure correct number of bytes were returned by slave
@@ -287,8 +268,7 @@ void readAndReportData(byte address, int theRegister, byte numBytes, byte stopTX
   Firmata.sendSysex(SYSEX_I2C_REPLY, numBytes + 2, i2cRxData);
 }
 
-void outputPort(byte portNumber, byte portValue, byte forceSend)
-{
+void outputPort(byte portNumber, byte portValue, byte forceSend) {
   // pins not configured as INPUT are cleared to zeros
   portValue = portValue & portConfigInputs[portNumber];
   // only send if the value is different than previously sent
@@ -301,8 +281,7 @@ void outputPort(byte portNumber, byte portValue, byte forceSend)
 /* -----------------------------------------------------------------------------
  * check all the active digital inputs for change of state, then add any events
  * to the Serial output queue using Serial.print() */
-void checkDigitalInputs(void)
-{
+void checkDigitalInputs(void) {
   /* Using non-looping code allows constants to be given to readPort().
    * The compiler will apply substantial optimizations if the inputs
    * to readPort() are compile-time constants. */
@@ -328,8 +307,7 @@ void checkDigitalInputs(void)
 /* sets the pin mode to the correct state and sets the relevant bits in the
  * two bit-arrays that track Digital I/O and PWM status
  */
-void setPinModeCallback(byte pin, int mode)
-{
+void setPinModeCallback(byte pin, int mode) {
   if (pinConfig[pin] == IGNORE)
     return;
 
@@ -396,7 +374,7 @@ void setPinModeCallback(byte pin, int mode)
       }
       break;
     /*
-        case;:
+        case ENCODER:
           // enable the pullups for an encoder pin
           pinMode(pin, INPUT);
           digitalWrite(pin, HIGH);
@@ -431,8 +409,7 @@ void setPinModeCallback(byte pin, int mode)
   // TODO: save status to EEPROM here, if changed
 }
 
-void analogWriteCallback(byte pin, int value)
-{
+void analogWriteCallback(byte pin, int value) {
   if (pin < TOTAL_PINS) {
     switch (pinConfig[pin]) {
       case SERVO:
@@ -449,10 +426,8 @@ void analogWriteCallback(byte pin, int value)
   }
 }
 
-void digitalWriteCallback(byte port, int value)
-{
+void digitalWriteCallback(byte port, int value) {
   byte pin, lastPin, mask = 1, pinWriteMask = 0;
-
   if (port < TOTAL_PORTS) {
     // create a mask of the pins on this port that are writable.
     lastPin = port * 8 + 8;
@@ -474,11 +449,7 @@ void digitalWriteCallback(byte port, int value)
 }
 
 
-// -----------------------------------------------------------------------------
-/* sets bits in a bit array (int) to toggle the reporting of the analogIns
- */
-//void FirmataClass::setAnalogPinReporting(byte pin, byte state) {
-//}
+// sets bits in a bit array (int) to toggle the reporting of the analogIns
 void reportAnalogCallback(byte analogPin, int value) {
   if (analogPin < TOTAL_ANALOG_PINS) {
     if (value == 0) {
@@ -539,7 +510,6 @@ void sysexCallback(byte command, byte argc, byte *argv) {
       else {
         slaveAddress = argv[0];
       }
-
       // need to invert the logic here since 0 will be default for client
       // libraries that have not updated to add support for restart tx
       if (argv[1] & I2C_END_TX_MASK) {
@@ -548,7 +518,6 @@ void sysexCallback(byte command, byte argc, byte *argv) {
       else {
         stopTX = I2C_STOP_TX;
       }
-
       switch (mode) {
         case I2C_WRITE:
           Wire.beginTransmission(slaveAddress);
@@ -610,7 +579,6 @@ void sysexCallback(byte command, byte argc, byte *argv) {
                 break;
               }
             }
-
             for (byte i = queryIndexToSkip; i < queryIndex + 1; i++) {
               if (i < MAX_QUERIES) {
                 query[i].addr = query[i + 1].addr;
@@ -628,15 +596,12 @@ void sysexCallback(byte command, byte argc, byte *argv) {
       break;
     case I2C_CONFIG:
       delayTime = (argv[0] + (argv[1] << 7));
-
       if (delayTime > 0) {
         i2cReadDelayTime = delayTime;
       }
-
       if (!isI2CEnabled) {
         enableI2CPins();
       }
-
       break;
     case SERVO_CONFIG:
       if (argc > 4) {
@@ -664,7 +629,7 @@ void sysexCallback(byte command, byte argc, byte *argv) {
         if (samplingInterval < MINIMUM_SAMPLING_INTERVAL) {
           samplingInterval = MINIMUM_SAMPLING_INTERVAL;
         }
-        /* calculate number of loops per ping */
+        // calculate number of loops per ping
         numLoops = INTER_PING_INTERVAL / samplingInterval;
         //numLoops = 1;
       }
@@ -736,20 +701,15 @@ void sysexCallback(byte command, byte argc, byte *argv) {
     case ENCODER_CONFIG:
       // instantiate an encoder object with user's
       // requested pin designators
-
       encoderPin1 = argv[0];
       encoderPin2 = argv[1];
-
       pinMode(encoderPin1, INPUT);
       digitalWrite(encoderPin1, HIGH);
-
       pinMode(encoderPin2, INPUT);
       digitalWrite(encoderPin2, HIGH);
       // used as part of encoder sysex message
-
       pinConfig[encoderPin1] = ENCODER;
       pinConfig[encoderPin2] = ENCODER;
-
       encoderIsReporting = true;
       enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
       enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
@@ -760,7 +720,7 @@ void sysexCallback(byte command, byte argc, byte *argv) {
           pixyPtr = new Pixy();
           pixyPtr->init();
         }
-        // mark pins as Pixy so they are ignore in non Pixy data requests
+        // Mark pins as Pixy so they are ignored in non Pixy digital IO data requests
         setPinModeCallback(PIN_PIXY_MOSI, PIXY);
         setPinModeCallback(PIN_PIXY_MISO, PIXY);
         pixyIsReporting = true;
@@ -794,10 +754,8 @@ void sysexCallback(byte command, byte argc, byte *argv) {
     case TONE_DATA:
       byte toneCommand, pin;
       int frequency, duration;
-
       toneCommand = argv[0];
       pin = argv[1];
-
       if (toneCommand == TONE_TONE) {
         frequency = argv[2] + (argv[3] << 7);
         // duration is currently limited to 16,383 ms
@@ -816,101 +774,78 @@ void sysexCallback(byte command, byte argc, byte *argv) {
     // arg4 = maxdistance msb
     case SONAR_CONFIG :
       int max_distance;
-      if ( numActiveSonars < MAX_SONARS)
-      {
+      if ( numActiveSonars < MAX_SONARS) {
         sonarTriggerPin = argv[0];
         sonarEchoPin = argv[1];
         // set interval to a minium of 33 ms.
         if ( argv[2] >= 33 ) {
           pingInterval = argv[2];
-        }
-        else {
+        } else {
           pingInterval = 33;
         }
         max_distance = argv[3] + (argv[4] << 7 );
         sonarPinNumbers[numActiveSonars] = sonarTriggerPin;
-
         setPinModeCallback(sonarTriggerPin, SONAR);
         setPinModeCallback(sonarEchoPin, SONAR);
         sonars[numActiveSonars] = new NewPing(sonarTriggerPin, sonarEchoPin, max_distance);
         numActiveSonars++;
-      }
-      else {
+      } else {
         Firmata.sendString("PING_CONFIG Error: Exceeded number of supported ping devices");
       }
       break;
 
     case STEPPER_DATA:
       // determine if this a STEPPER_CONFIGURE command or STEPPER_OPERATE command
-      if (argv[0] == STEPPER_CONFIGURE)
-      {
+      if (argv[0] == STEPPER_CONFIGURE) {
         int numSteps = argv[1] + (argv[2] << 7);
         int pin1 = argv[3];
         int pin2 = argv[4];
-        if ( argc == 5 )
-        {
+        if ( argc == 5 ) {
           // two pin motor
           stepper = new Stepper(numSteps, pin1, pin2);
-        }
-        else if (argc == 7 ) // 4 wire motor
-        {
+        } else if (argc == 7 ) {
+          // 4 wire motor
           int pin3 = argv[5];
           int pin4 = argv[6];
           stepper =  new Stepper(numSteps, pin1, pin2, pin3, pin4);
-        }
-        else
-        {
+        } else {
           Firmata.sendString("STEPPER CONFIG Error: Wrong Number of arguments");
           printData("argc = ", argc);
         }
-      }
-      else if ( argv[0] == STEPPER_STEP )
-      {
+      } else if ( argv[0] == STEPPER_STEP ) {
         long speed = (long)argv[1] | ((long)argv[2] << 7) | ((long)argv[3] << 14);
         int numSteps = argv[4] + (argv[5] << 7);
         int direction = argv[6];
-        if (stepper != NULL )
-        {
+        if (stepper != NULL ) {
           stepper->setSpeed(speed);
-          if (direction == 0 )
-          {
+          if (direction == 0 ) {
             numSteps *= -1;
           }
           stepper->step(numSteps);
-        }
-        else
-        {
+        } else {
           Firmata.sendString("STEPPER OPERATE Error: MOTOR NOT CONFIGURED");
         }
-      }
-      else if ( argv[0] == STEPPER_LIBRARY_VERSION )
-      {
-        if ( stepper != NULL )
-        {
+      } else if ( argv[0] == STEPPER_LIBRARY_VERSION ) {
+        if ( stepper != NULL ) {
           int version = stepper->version();
           Firmata.write(START_SYSEX);
           Firmata.write(STEPPER_DATA);
           Firmata.write(version & 0x7F);
           Firmata.write(version >> 7);
           Firmata.write(END_SYSEX);
-        }
-        else
-        {
+        } else {
           // did not find a configured stepper
           Firmata.sendString("STEPPER FIRMWARE VERSION Error: NO MOTORS CONFIGURED");
         }
         break;
-      }
-      else
-      {
+      } else {
         Firmata.sendString("STEPPER CONFIG Error: UNKNOWN STEPPER COMMAND");
       }
       break;
   }
 }
 
-void enableI2CPins()
-{
+void enableI2CPins() {
   byte i;
   // is there a faster way to do this? would probaby require importing
   // Arduino.h to get SCL and SDA pins
@@ -920,13 +855,11 @@ void enableI2CPins()
       setPinModeCallback(i, I2C);
     }
   }
-
   isI2CEnabled = true;
-
   Wire.begin();
 }
 
-/* disable the i2c pins so they can be used for other functions */
+// Disable the i2c pins so they can be used for other functions.
 void disableI2CPins() {
   isI2CEnabled = false;
   // disable read continuous mode for all devices
@@ -937,8 +870,7 @@ void disableI2CPins() {
  * SETUP()
  *============================================================================*/
 
-void systemResetCallback()
-{
+void systemResetCallback() {
   isResetting = true;
   encoderIsReporting = false;
   pixyIsReporting = false;
@@ -963,15 +895,12 @@ void systemResetCallback()
     if (IS_PIN_ANALOG(i)) {
       // turns off pullup, configures everything
       setPinModeCallback(i, ANALOG);
-    }
-    else if ( IS_PIN_TONE(i)) {
+    } else if ( IS_PIN_TONE(i)) {
       noTone(i);
-    }
-    else {
+    } else {
       // sets the output to 0, configures portConfigInputs
       setPinModeCallback(i, OUTPUT);
     }
-
     servoPinMap[i] = 255;
   }
   // stop pinging
@@ -993,29 +922,28 @@ void systemResetCallback()
   detachedServoCount = 0;
   servoCount = 0;
 
-  /* send digital inputs to set the initial state on the host computer,
-   * since once in the loop(), this firmware will only send on change */
+  // send digital inputs to set the initial state on the host computer,
+  // since once in the loop(), this firmware will only send on change
   /*
-  TODO: this can never execute, since no pins default to digital input
-        but it will be needed when/if we support EEPROM stored config
-  for (byte i=0; i < TOTAL_PORTS; i++) {
-    outputPort(i, readPort(i, portConfigInputs[i]), true);
-  }
+    TODO: this can never execute, since no pins default to digital input
+          but it will be needed when/if we support EEPROM stored config
+    for (byte i=0; i < TOTAL_PORTS; i++) {
+      outputPort(i, readPort(i, portConfigInputs[i]), true);
+    }
   */
   isResetting = false;
   if (hasReset == false) {
-     hasReset = true;
+    hasReset = true;
   }
   else {
-     wdt_enable(WDTO_15MS);
-     while(1)
-       ;
+    wdt_enable(WDTO_15MS);
+    while (1)
+      ;
   }
 }
 
 void setup() {
   Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
-
   Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
   Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
   Firmata.attach(REPORT_ANALOG, reportAnalogCallback);
@@ -1034,7 +962,7 @@ void setup() {
     }
   }
 
-  /* calculate number of loops per ping */
+  // calculate number of loops per ping
   numLoops = INTER_PING_INTERVAL / samplingInterval;
 
   Firmata.begin(57600);
@@ -1049,12 +977,12 @@ void loop() {
   int pingResult = 0;
   byte pixyBlockIndex, numPixyBlocks;
 
-  /* DIGITALREAD - as fast as possible, check for changes and output them to the
-   * FTDI buffer using Serial.print()  */
+  // DIGITALREAD - as fast as possible, check for changes and output them to the
+  // FTDI buffer using Serial.print()
   checkDigitalInputs();
 
-  /* STREAMREAD - processing incoming messagse as soon as possible, while still
-   * checking digital inputs.  */
+  // STREAMREAD - processing incoming messagse as soon as possible, while still
+  // checking digital inputs.
   while (Firmata.available())
     Firmata.processInput();
 
@@ -1087,8 +1015,7 @@ void loop() {
       }
     }
 
-
-    /* ANALOGREAD - do all analogReads() at the configured sampling interval */
+    // ANALOGREAD - do all analogReads() at the configured sampling interval
     for (pin = 0; pin < TOTAL_PINS; pin++) {
       if (IS_PIN_ANALOG(pin) && pinConfig[pin] == ANALOG) {
         analogPin = PIN_TO_ANALOG(pin);
@@ -1125,6 +1052,8 @@ void loop() {
       enableInterrupt(encoderPin1, interruptFunctionLeft, RISING);
       enableInterrupt(encoderPin2, interruptFunctionRight, RISING);
     }
+
+    // if Pixy camera has been configured to report then, return Pixy block data
     if (pixyIsReporting && pixyPtr != NULL) {
       numPixyBlocks = pixyPtr->getBlocks();
       if (numPixyBlocks > pixyMaxBlocks) {
@@ -1145,15 +1074,13 @@ void loop() {
   }
   if (keepAliveInterval) {
     currentMillis = millis();
-    if (currentMillis - previousKeepAliveMillis > keepAliveInterval*1000) {
+    if (currentMillis - previousKeepAliveMillis > keepAliveInterval * 1000) {
       systemResetCallback();
     }
   }
 }
 
-/**
- * Writes a Pixy block of data using Firmata.write.
- */
+// Writes a Pixy block of data using Firmata.write commands.
 void writePixyBlock(byte pixyBlockIndex) {
   // signature - The signature number of the detected object (1-7 for normal signatures)
   // x - The x location of the center of the detected object (0 to 319)
