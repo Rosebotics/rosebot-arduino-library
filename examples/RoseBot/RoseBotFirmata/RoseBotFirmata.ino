@@ -1127,10 +1127,6 @@ void loop() {
     }
     if (pixyIsReporting && pixyPtr != NULL) {
       numPixyBlocks = pixyPtr->getBlocks();
-      // Only send Pixy data if a block was found.
-      if (samplingInterval < MINIMUM_SAMPLING_INTERVAL_WITH_PIXY) {
-        samplingInterval = MINIMUM_SAMPLING_INTERVAL_WITH_PIXY;
-      }
       if (numPixyBlocks > pixyMaxBlocks) {
         numPixyBlocks = pixyMaxBlocks;
       }
@@ -1141,6 +1137,10 @@ void loop() {
         writePixyBlock(pixyBlockIndex);
       }
       Firmata.write(END_SYSEX);
+      # Pixy data communication needs to extend the minimum sampling interval.
+      if (samplingInterval < MINIMUM_SAMPLING_INTERVAL_WITH_PIXY) {
+        samplingInterval = MINIMUM_SAMPLING_INTERVAL_WITH_PIXY;
+      }
     }
   }
   if (keepAliveInterval) {
