@@ -49,31 +49,27 @@
 #define I2C_END_TX_MASK             B01000000
 #define I2C_STOP_TX                 1
 #define I2C_RESTART_TX              0
-
 #define MAX_QUERIES                 8
 #define REGISTER_NOT_SPECIFIED      -1
 
-// the minimum interval for sampling analog input
+// Minimum sampling intervals
 #define MINIMUM_SAMPLING_INTERVAL 10
 #define MINIMUM_SAMPLING_INTERVAL_WITH_PIXY 25
-
-#define REGISTER_NOT_SPECIFIED -1
-
-#define INTER_PING_INTERVAL 40 // 40 ms.
 
 // SYSEX command sub specifiers
 #define TONE_TONE 0
 #define TONE_NO_TONE 1
-
 #define STEPPER_CONFIGURE 0
 #define STEPPER_STEP 1
 #define STEPPER_LIBRARY_VERSION 2
-
 #define PIXY_INIT 0
 #define PIXY_SET_SERVOS 1
 #define PIXY_SET_BRIGHTNESS 2
 #define PIXY_SET_LED 3
 
+// Other
+#define REGISTER_NOT_SPECIFIED -1
+#define INTER_PING_INTERVAL 40 // 40 ms.
 #define PIN_PIXY_MOSI 11
 #define PIN_PIXY_MISO 12
 
