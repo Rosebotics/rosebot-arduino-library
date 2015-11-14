@@ -1,3 +1,39 @@
+Fri Nov  6 19:13:20 CST 2015
+Version 0.9.4. Thanks again to RobertClemenzi, who discovered 2 bugs: 1. A spurious comma in some array definitions caused a compiler warning, and more importantly, 2. it was impossible to use arduinoInterruptedPin if this library was used to support other libraries. Fixed them both.
+
+Mon Oct 19 07:45:08 CDT 2015
+Version 0.9.3. Thanks to RobertClemenzi, who pointed out that "Useless.cpp" is not included with the distribution zip file. The only change is to add that file to the distribution zip file.
+
+Sat Oct 17 12:03:03 CDT 2015
+Version 0.9.2. I discovered a rather pernicious bug, wherein the library was setting the global interrupt enable bit. This could cause a serious and difficult-to-debug race condition, as it is not the job of the library to manage that bit. The chips come with interrupts enabled so exi
+sting code should not be affected. My thanks to http://gammon.com.au/interrupts (the 'How are interrupts queued?' section).
+
+Fri Oct 16 07:58:45 CDT 2015
+Version 0.9.1. Bug fixes to examples/OOSimple (thanks RobertClemenzi!). Arduino Zero support added (this is a trivial preprocessor macro check; see the Usage wiki page). Wiki pages updated, especially the FAQ.
+
+Tue Sep 29 06:34:58 CDT 2015
+Version 0.9.0. ATtiny support has been added! Support files come from https://github.com/damellis/attiny .
+Chips supported include ATtiny44/84 and ATtiny 45/85 (including Gemma). As always, bug reports are
+welcome at https://github.com/GreyGnome/EnableInterrupt/issues . NOTE: I don't have an ATtiny (yet),
+so the only work I could do was to make sure a sample sketch compiled.
+
+Thu Aug 27 22:24:39 CDT 2015
+Version 0.8.2. Includes bugfixes for issues raised by engwan, MakkyB, and juanricos; HiSpeed mode was not working but now it is. I also received some nice bug reports and testing from TomWS1. Finally, the library.properties file was out of date.
+
+Sat Aug  8 12:03:24 CDT 2015
+Version 0.8.1. I forgot to include some fixes for an issue on the website; https://github.com/GreyGnome/EnableInterrupt/issues/13 (having to do with the 1284 chip). These are now included.
+
+Fri Aug  7 06:44:55 CDT 2015
+Version 0.8.0. This release includes the function to set a variable that can be queried by the programmer's
+ISR, to determine which pin was interrupted. Define EI_ARDUINO_INTERRUPTED_PIN in the main sketch.
+
+Also:
+My Mega2560 failed right in the middle of testing this release. So that platform is not fully tested.
+The InterruptedPin2560.ino sketch was giving me some inconsistent results: I saw  pin 71 interrupted twice,
+and pin 70 not at all. I think there is a bug in utility/ei_PinChange2560.h, but I will release before I resolve
+this. If there is anyone who could test on the 2560 platform- run the InterruptedPin2560.ino sketch and send me
+the output- I would appreciate it.
+
 Mon Jul  6 17:41:05 CDT 2015
 This release includes compiler directives that allow you to eliminate unneeded ports and memory allocations, to more efficiently utilize code and static RAM. See https://github.com/GreyGnome/EnableInterrupt/wiki/SaveMemory for the new features.
 

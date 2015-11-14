@@ -27,37 +27,42 @@
 #include <Pixy.h>
 
 // This is the main Pixy object 
-Pixy* pixyPtr = NULL;
+Pixy pixy;
 
-void setup() {
-  Serial.begin(115200);
+void setup()
+{
+  Serial.begin(9600);
   Serial.print("Starting...\n");
-  pixyPtr = new Pixy();
-  pixyPtr->init();
+
+  pixy.init();
 }
 
-void loop() { 
+void loop()
+{ 
   static int i = 0;
   int j;
   uint16_t blocks;
   char buf[32]; 
   
   // grab blocks!
-  blocks = pixyPtr->getBlocks();
+  blocks = pixy.getBlocks();
   
   // If there are detect blocks, print them!
-  if (blocks) {
+  if (blocks)
+  {
     i++;
     
     // do this (print) every 50 frames because printing every
     // frame would bog down the Arduino
-    if (i % 50==0) {
+    if (i%50==0)
+    {
       sprintf(buf, "Detected %d:\n", blocks);
       Serial.print(buf);
-      for (j = 0; j < blocks; j++) {
+      for (j=0; j<blocks; j++)
+      {
         sprintf(buf, "  block %d: ", j);
         Serial.print(buf); 
-        pixyPtr->blocks[j].print();
+        pixy.blocks[j].print();
       }
     }
   }  

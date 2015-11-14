@@ -1,24 +1,25 @@
 # EnableInterrupt
 New Arduino interrupt library, designed for all versions of the Arduino.
-NEW: 644/1284 support, using the Mighty1284 as the basis. See https://github.com/maniacbug/mighty-1284p.
+NEW: ATtiny support! ATtiny 44/84 and 45/85 supported!
+
 Functions:
 
 ```
 enableInterrupt- Enables interrupt on a selected Arduino pin.
 disableInterrupt - Disables interrupt on the selected Arduino pin.
 ```
-*_What's New?_ Tue Jun 23 06:47:10 CDT 2015 Version 0.7.0 of the library has
-been released. This release includes compiler directives that allow you
-to eliminate unneeded ports and memory allocations, to more efficiently
-utilize code and static RAM. See https://github.com/GreyGnome/EnableInterrupt/wiki/SaveMemory 
-for the new features.*
 
-The EnableInterrupt library is a new Arduino interrupt library, designed for
+*_What's New?_ Fri Nov  6 19:13:20 CST 2015 Version 0.9.4 of the library has been released. Thanks to RobertClemenzi, who pointed out 2 bugs: 1. A spurious comma in some array definitions caused a compiler warning, and 2. More importantly, it was impossible to use arduinoInterruptedPin if this library was used to support other libraries.
+
+IMPORTANT NOTE: In 0.9.2 I discovered a rather pernicious bug, wherein the library was setting the global interrupt enable bit. This could cause a serious and difficult-to-debug race condition, as it is not the job of the library to manage that bit. The chips come with interrupts enabled so existing code should not be affected, but if you were relying on that behavior note that it has changed. My thanks to http://gammon.com.au/interrupts (the 'How are interrupts queued?' section).
+
+The EnableInterrupt library is an Arduino interrupt library, designed for
 all versions of the Arduino- at this writing, the Uno (and other ATmega328p-based
-boards, like the mini), Due, Leonardo (and other ATmega32u4-based boards, like the
+boards, like the mini), Due, Zero, Leonardo (and other ATmega32u4-based boards, like the
 Micro), the Mega2560 (and other ATmega2560-based boards, like the MegaADK),
-and for non-Arduino 644/1284p-based projects (using the Mighty1284 for support files
-and pin numbering).  It enables you to assign an interrupt to pins on your chip
+and for non-Arduino chips: the 644/1284p (using the Mighty1284 for support files
+and pin numbering), ATtiny 44/84, and ATtiny 45/85 (using DA Mellis' support files).
+The library enables you to assign an interrupt to pins on your chip
 that support them, and presents a common interface to all supported chips. This
 means that on the Arduino Uno and Mega you don't give it an interrupt number, as per
 http://arduino.cc/en/Reference/attachInterrupt. Rather, your first argument is a
@@ -102,6 +103,7 @@ back to your sketch. For a review of this issue see
 https://github.com/GreyGnome/EnableInterrupt/blob/master/Interrupt%20Timing.pdf
 
 # USAGE:
+## Basic Usage
 *enableInterrupt*- Enables interrupt on a selected Arduino pin.
 ```C
 enableInterrupt(uint8_t pinNumber, void (*userFunction)(void), uint8_t mode);
@@ -152,6 +154,15 @@ ignore this whole discussion for ATmega2560, ATmega32U4, or SAM3X8E (Due)-based 
 
 It is possible to change the user function assigned to an interrupt after enabling it (if you
 want). Later in your code simply disable the interrupt and enable it with a different function.
+
+## Determine the Pin That Was Interrupted
+There is a facility in the library to identify the most recent pin that triggered an interrupt. Set the following definition '''before''' including the EnableInterrupt.h file in your sketch:
+```
+ #define EI_ARDUINO_INTERRUPTED_PIN
+```
+Then, the ATmega chip will set a variable with every interrupt, and you can query it to find which pin interrupted your sketch. The variable is arduinoInterruptedPin and it is of type uint8_t.
+
+See the https://github.com/GreyGnome/EnableInterrupt/wiki/Usage wiki page for more information.
 
 # PIN / PORT BESTIARY
 Theoretically pins 0 and 1 (RX and TX) are supported but as these pins have

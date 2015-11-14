@@ -818,8 +818,9 @@ void sysexCallback(byte command, byte argc, byte *argv)
         }
         else
         {
+          char stepperErrorStr[] = "argc =";
           Firmata.sendString("STEPPER CONFIG Error: Wrong Number of arguments");
-          printData("argc = ", argc) ;
+          printData(stepperErrorStr, argc);
         }
       }
       else if ( argv[0] == STEPPER_STEP )
