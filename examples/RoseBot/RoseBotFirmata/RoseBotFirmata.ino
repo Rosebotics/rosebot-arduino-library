@@ -32,7 +32,7 @@
 
 #include <Servo.h>
 #include <Wire.h>
-#include <FirmataPlusRB.h>
+#include <FirmataPlusRBPixy.h>
 #include <NewPing.h>
 #include <Stepper.h>
 #include <EnableInterrupt.h>
@@ -805,8 +805,9 @@ void sysexCallback(byte command, byte argc, byte *argv) {
           int pin4 = argv[6];
           stepper =  new Stepper(numSteps, pin1, pin2, pin3, pin4);
         } else {
+	  char stepperErrorStr[] = "argc =";
           Firmata.sendString("STEPPER CONFIG Error: Wrong Number of arguments");
-          printData("argc = ", argc);
+          printData(stepperErrorStr, argc);
         }
       } else if ( argv[0] == STEPPER_STEP ) {
         long speed = (long)argv[1] | ((long)argv[2] << 7) | ((long)argv[3] << 14);
